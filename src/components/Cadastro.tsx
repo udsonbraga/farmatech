@@ -1,10 +1,10 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Plus, ArrowLeft } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface CadastroProps {
   onRegister: (userData: {
@@ -30,12 +30,27 @@ const Cadastro: React.FC<CadastroProps> = ({ onRegister, onBackToLogin }) => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (formData.senha !== formData.confirmarSenha) {
-      alert('As senhas não coincidem');
+      toast.error('As senhas não coincidem', {
+        description: 'Por favor, verifique se as senhas são idênticas.'
+      });
       return;
     }
     
     const { confirmarSenha, ...userData } = formData;
+    
+    // Simula o cadastro
     onRegister(userData);
+    
+    // Mostra mensagem de sucesso
+    toast.success('Cadastro realizado com sucesso!', {
+      description: 'Sua conta foi criada. Você será redirecionado para o login em alguns segundos.',
+      duration: 3000,
+    });
+    
+    // Redireciona para o login após 3 segundos
+    setTimeout(() => {
+      onBackToLogin();
+    }, 3000);
   };
 
   const handleInputChange = (field: string, value: string) => {

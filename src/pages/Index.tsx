@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { toast } from 'sonner';
 import Login from '@/components/Login';
@@ -54,12 +53,13 @@ const Index = () => {
       telefone: userData.telefone
     };
     
-    setUser(newUser);
-    setCurrentScreen('dashboard');
+    // Salva o usuário no localStorage para simular persistência
+    const users = JSON.parse(localStorage.getItem('farmatech-users') || '[]');
+    users.push(newUser);
+    localStorage.setItem('farmatech-users', JSON.stringify(users));
     
-    toast.success('Conta criada com sucesso!', {
-      description: `Bem-vindo ao FarmaTech, ${newUser.responsavelName}!`
-    });
+    // Não faz login automático - deixa o usuário ir para o login
+    console.log('Usuário cadastrado com sucesso:', newUser);
   };
 
   const handleLogout = () => {
