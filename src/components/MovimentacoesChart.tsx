@@ -1,50 +1,95 @@
 
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, LineChart, Line } from 'recharts';
 import { Movimento } from '@/types';
 import { ArrowDown, ArrowUp, TrendingUp } from 'lucide-react';
+import MovimentacoesFiltros from './MovimentacoesFiltros';
 
 interface MovimentacoesChartProps {
   movimentos: Movimento[];
 }
 
 const MovimentacoesChart: React.FC<MovimentacoesChartProps> = ({ movimentos }) => {
-  // Processar dados para o gráfico - últimos 7 dias
-  const processMovimentosData = () => {
-    const hoje = new Date();
-    const ultimosSeteDias = Array.from({ length: 7 }, (_, i) => {
-      const data = new Date(hoje);
-      data.setDate(data.getDate() - (6 - i));
-      return data.toISOString().split('T')[0];
+  const [selectedMonth, setSelectedMonth] = useState<number>(0); // 0 = todos os meses
+  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
+
+  // Filtrar movimentos baseado nos filtros selecionados
+  const movimentosFiltrados = useMemo(() => {
+    return movimentos.filter(movimento => {
+      const dataMovimento = new Date(movimento.data);
+      const anoMovimento = dataMovimento.getFullYear();
+      const mesMovimento = dataMovimento.getMonth() + 1; // getMonth() retorna 0-11, queremos 1-12
+
+      const anoMatch = anoMovimento === selectedYear;
+      const mesMatch = selectedMonth === 0 || mesMovimento === selectedMonth;
+
+      return anoMatch && mesMatch;
     });
+  }, [movimentos, selectedMonth, selectedYear]);
 
-    return ultimosSeteDias.map(dia => {
-      const movimentosDia = movimentos.filter(mov => 
-        mov.data.split('T')[0] === dia
-      );
+  // Processar dados para o gráfico - baseado no período filtrado
+  const processMovimentosData = () => {
+    if (selectedMonth === 0) {
+      // Mostrar dados mensais do ano selecionado
+      const mesesDoAno = Array.from({ length: 12 }, (_, i) => {
+        const mes = i + 1;
+        const nomesMeses = [
+          'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun',
+          'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'
+        ];
 
-      const entradas = movimentosDia
-        .filter(mov => mov.tipo === 'entrada')
-        .reduce((sum, mov) => sum + mov.quantidade, 0);
+        const movimentosDoMes = movimentosFiltrados.filter(mov => {
+          const dataMovimento = new Date(mov.data);
+          return dataMovimento.getMonth() + 1 === mes;
+        });
 
-      const saidas = movimentosDia
-        .filter(mov => mov.tipo === 'saida')
-        .reduce((sum, mov) => sum + mov.quantidade, 0);
+        const entradas = movimentosDoMes
+          .filter(mov => mov.tipo === 'entrada')
+          .reduce((sum, mov) => sum + mov.quantidade, 0);
 
-      const diaFormatado = new Date(dia).toLocaleDateString('pt-BR', { 
-        weekday: 'short',
-        day: '2-digit'
+        const saidas = movimentosDoMes
+          .filter(mov => mov.tipo === 'saida')
+          .reduce((sum, mov) => sum + mov.quantidade, 0);
+
+        return {
+          periodo: nomesMeses[i],
+          entradas,
+          saidas,
+          saldo: entradas - saidas
+        };
       });
 
-      return {
-        dia: diaFormatado,
-        entradas,
-        saidas,
-        saldo: entradas - saidas
-      };
-    });
+      return mesesDoAno;
+    } else {
+      // Mostrar dados diários do mês selecionado
+      const diasDoMes = new Date(selectedYear, selectedMonth, 0).getDate();
+      
+      return Array.from({ length: Math.min(diasDoMes, 30) }, (_, i) => {
+        const dia = i + 1;
+        const dataFormatada = `${selectedYear}-${selectedMonth.toString().padStart(2, '0')}-${dia.toString().padStart(2, '0')}`;
+
+        const movimentosDoDia = movimentosFiltrados.filter(mov => 
+          mov.data.split('T')[0] === dataFormatada
+        );
+
+        const entradas = movimentosDoDia
+          .filter(mov => mov.tipo === 'entrada')
+          .reduce((sum, mov) => sum + mov.quantidade, 0);
+
+        const saidas = movimentosDoDia
+          .filter(mov => mov.tipo === 'saida')
+          .reduce((sum, mov) => sum + mov.quantidade, 0);
+
+        return {
+          periodo: `${dia}`,
+          entradas,
+          saidas,
+          saldo: entradas - saidas
+        };
+      });
+    }
   };
 
   const chartData = processMovimentosData();
@@ -64,18 +109,38 @@ const MovimentacoesChart: React.FC<MovimentacoesChartProps> = ({ movimentos }) =
     }
   };
 
-  const totalEntradas = movimentos
+  const totalEntradas = movimentosFiltrados
     .filter(mov => mov.tipo === 'entrada')
     .reduce((sum, mov) => sum + mov.quantidade, 0);
 
-  const totalSaidas = movimentos
+  const totalSaidas = movimentosFiltrados
     .filter(mov => mov.tipo === 'saida')
     .reduce((sum, mov) => sum + mov.quantidade, 0);
 
   const saldoTotal = totalEntradas - totalSaidas;
 
+  const getPeriodoTexto = () => {
+    if (selectedMonth === 0) {
+      return `Movimentações Mensais de ${selectedYear}`;
+    } else {
+      const nomesMeses = [
+        'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+        'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+      ];
+      return `Movimentações Diárias - ${nomesMeses[selectedMonth - 1]} ${selectedYear}`;
+    }
+  };
+
   return (
     <div className="space-y-6">
+      {/* Filtros */}
+      <MovimentacoesFiltros
+        selectedMonth={selectedMonth}
+        selectedYear={selectedYear}
+        onMonthChange={setSelectedMonth}
+        onYearChange={setSelectedYear}
+      />
+
       {/* Resumo das Movimentações */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="border-2 border-farmatech-teal/20">
@@ -128,13 +193,13 @@ const MovimentacoesChart: React.FC<MovimentacoesChartProps> = ({ movimentos }) =
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <TrendingUp className="h-5 w-5" />
-            Movimentações dos Últimos 7 Dias
+            {getPeriodoTexto()}
           </CardTitle>
         </CardHeader>
         <CardContent>
           <ChartContainer config={chartConfig} className="h-[300px]">
             <BarChart data={chartData}>
-              <XAxis dataKey="dia" />
+              <XAxis dataKey="periodo" />
               <YAxis />
               <ChartTooltip content={<ChartTooltipContent />} />
               <Bar dataKey="entradas" fill="var(--color-entradas)" name="Entradas" />
@@ -147,12 +212,12 @@ const MovimentacoesChart: React.FC<MovimentacoesChartProps> = ({ movimentos }) =
       {/* Gráfico de Linha do Saldo */}
       <Card>
         <CardHeader>
-          <CardTitle>Tendência do Saldo Diário</CardTitle>
+          <CardTitle>Tendência do Saldo</CardTitle>
         </CardHeader>
         <CardContent>
           <ChartContainer config={chartConfig} className="h-[200px]">
             <LineChart data={chartData}>
-              <XAxis dataKey="dia" />
+              <XAxis dataKey="periodo" />
               <YAxis />
               <ChartTooltip content={<ChartTooltipContent />} />
               <Line 
