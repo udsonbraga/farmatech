@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { 
@@ -14,6 +14,9 @@ import {
 } from 'lucide-react';
 import { User } from '@/types';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { useConfirmExit } from '@/hooks/useConfirmExit';
+import ConfirmDialog from '@/components/ConfirmDialog';
+import MovimentacoesChart from '@/components/MovimentacoesChart';
 
 interface DashboardProps {
   user: User;
@@ -35,6 +38,11 @@ const Dashboard: React.FC<DashboardProps> = ({
   const [medicamentos] = useLocalStorage('medicamentos', []);
   const [vendas] = useLocalStorage('vendas', []);
   const [movimentos] = useLocalStorage('movimentos', []);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [showMovimentacoesChart, setShowMovimentacoesChart] = useState(false);
+
+  // Hook para confirmação de saída do navegador
+  useConfirmExit(true);
 
   // Calcular estatísticas
   const totalProdutos = medicamentos.length;
@@ -47,6 +55,22 @@ const Dashboard: React.FC<DashboardProps> = ({
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     return diffDays <= 30 && diffDays > 0;
   }).length;
+
+  const handleLogoutClick = () => {
+    setShowLogoutConfirm(true);
+  };
+
+  const handleConfirmLogout = () => {
+    onLogout();
+  };
+
+  const handleMovimentacoesClick = () => {
+    if (movimentos.length > 0) {
+      setShowMovimentacoesChart(true);
+    } else {
+      onNavigateToMovimentacao();
+    }
+  };
 
   const dashboardCards = [
     {
@@ -71,11 +95,11 @@ const Dashboard: React.FC<DashboardProps> = ({
       onClick: onNavigateToAlertas
     },
     {
-      title: 'Entradas e Saídas no Mês',
+      title: 'Análise de Movimentações',
       icon: TrendingUp,
       bgColor: 'farmatech-blue',
       textColor: 'text-white',
-      onClick: onNavigateToMovimentacao
+      onClick: handleMovimentacoesClick
     },
     {
       title: 'Medicamentos a Vencer',
@@ -92,6 +116,57 @@ const Dashboard: React.FC<DashboardProps> = ({
       onClick: onNavigateToVendas
     }
   ];
+
+  if (showMovimentacoesChart) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-farmatech-teal/5 to-farmatech-blue/5">
+        {/* Header */}
+        <div className="farmatech-blue text-white p-6 rounded-b-3xl shadow-lg">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowMovimentacoesChart(false)}
+                className="text-white hover:bg-white/20 p-2"
+              >
+                <ArrowRight className="h-5 w-5 rotate-180" />
+              </Button>
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-white/20 rounded-full">
+                  <TrendingUp className="h-6 w-6" />
+                </div>
+                <div>
+                  <h1 className="text-2xl font-bold">Análise de Movimentações</h1>
+                  <p className="text-white/80 text-sm">Gráficos e estatísticas</p>
+                </div>
+              </div>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleLogoutClick}
+              className="text-white hover:bg-white/20"
+            >
+              <LogOut className="h-4 w-4 mr-2" />
+              Sair
+            </Button>
+          </div>
+        </div>
+
+        {/* Chart Content */}
+        <div className="p-6">
+          <MovimentacoesChart movimentos={movimentos} />
+        </div>
+
+        <ConfirmDialog
+          open={showLogoutConfirm}
+          onOpenChange={setShowLogoutConfirm}
+          onConfirm={handleConfirmLogout}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-farmatech-teal/5 to-farmatech-blue/5">
@@ -110,7 +185,7 @@ const Dashboard: React.FC<DashboardProps> = ({
           <Button
             variant="ghost"
             size="sm"
-            onClick={onLogout}
+            onClick={handleLogoutClick}
             className="text-white hover:bg-white/20"
           >
             <LogOut className="h-4 w-4 mr-2" />
@@ -176,6 +251,12 @@ const Dashboard: React.FC<DashboardProps> = ({
           </Card>
         </div>
       </div>
+
+      <ConfirmDialog
+        open={showLogoutConfirm}
+        onOpenChange={setShowLogoutConfirm}
+        onConfirm={handleConfirmLogout}
+      />
     </div>
   );
 };
