@@ -5,9 +5,12 @@ import Login from '@/components/Login';
 import Cadastro from '@/components/Cadastro';
 import Dashboard from '@/components/Dashboard';
 import AlertasEstoque from '@/components/AlertasEstoque';
+import EstoqueProdutos from '@/components/EstoqueProdutos';
+import MovimentacaoEstoque from '@/components/MovimentacaoEstoque';
+import RegistroVendas from '@/components/RegistroVendas';
 import { User } from '@/types';
 
-type Screen = 'login' | 'cadastro' | 'dashboard' | 'alertas';
+type Screen = 'login' | 'cadastro' | 'dashboard' | 'alertas' | 'estoque' | 'movimentacao' | 'vendas';
 
 const Index = () => {
   const [currentScreen, setCurrentScreen] = useState<Screen>('login');
@@ -87,11 +90,32 @@ const Index = () => {
             user={user}
             onLogout={handleLogout}
             onNavigateToAlertas={() => setCurrentScreen('alertas')}
+            onNavigateToEstoque={() => setCurrentScreen('estoque')}
+            onNavigateToMovimentacao={() => setCurrentScreen('movimentacao')}
+            onNavigateToVendas={() => setCurrentScreen('vendas')}
           />
         ) : null;
       case 'alertas':
         return (
           <AlertasEstoque
+            onBack={() => setCurrentScreen('dashboard')}
+          />
+        );
+      case 'estoque':
+        return (
+          <EstoqueProdutos
+            onBack={() => setCurrentScreen('dashboard')}
+          />
+        );
+      case 'movimentacao':
+        return (
+          <MovimentacaoEstoque
+            onBack={() => setCurrentScreen('dashboard')}
+          />
+        );
+      case 'vendas':
+        return (
+          <RegistroVendas
             onBack={() => setCurrentScreen('dashboard')}
           />
         );

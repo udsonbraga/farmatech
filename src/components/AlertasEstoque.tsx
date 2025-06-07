@@ -1,63 +1,43 @@
 
 import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, AlertTriangle, Clock, Package } from 'lucide-react';
-import { Alerta } from '@/types';
+import { useLocalStorage } from '@/hooks/useLocalStorage';
 
 interface AlertasEstoqueProps {
   onBack: () => void;
 }
 
 const AlertasEstoque: React.FC<AlertasEstoqueProps> = ({ onBack }) => {
-  // Mock data para demonstração
-  const alertas: Alerta[] = [
-    {
-      id: '1',
-      medicamento: {
-        id: '1',
-        nome: 'Paracetamol',
-        quantidade: 3,
-        quantidadeMinima: 20,
-        categoria: 'Analgésico',
-        preco: 12.50,
-        dataVencimento: '2024-12-15'
-      },
-      tipo: 'estoque_baixo',
-      mensagem: 'Recomendo nas últimas três semanas com 40 unid.',
-      data: '2024-06-07'
-    },
-    {
-      id: '2',
-      medicamento: {
-        id: '2',
-        nome: 'Dipirona',
-        quantidade: 5,
-        quantidadeMinima: 25,
-        categoria: 'Analgésico',
-        preco: 8.90,
-        dataVencimento: '2024-08-20'
-      },
-      tipo: 'estoque_baixo',
-      mensagem: 'Sugestão recomendação 40 unid.',
-      data: '2024-06-07'
-    },
-    {
-      id: '3',
-      medicamento: {
-        id: '3',
-        nome: 'Omeprazol',
-        quantidade: 8,
-        quantidadeMinima: 30,
-        categoria: 'Gastroprotetor',
-        preco: 15.20,
-        dataVencimento: '2024-07-10'
-      },
-      tipo: 'estoque_baixo',
-      mensagem: 'Diptoiramon item proparar',
-      data: '2024-06-07'
-    }
+  const [medicamentos] = useLocalStorage('medicamentos', []);
+
+  // Gerar alertas baseados nos dados reais
+  const alertasEstoqueBaixo = medicamentos.filter(med => med.quantidade <= med.quantidadeMinima);
+  const alertasVencimento = medicamentos.filter(med => {
+    const hoje = new Date();
+    const vencimento = new Date(med.dataVencimento);
+    const diffTime = vencimento.getTime() - hoje.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays <= 30 && diffDays > 0;
+  });
+
+  const todos_alertas = [
+    ...alertasEstoqueBaixo.map(med => ({
+      id: `baixo_${med.id}`,
+      medicamento: med,
+      tipo: 'estoque_baixo' as const,
+      mensagem: `Estoque baixo: ${med.quantidade} unidades (mínimo: ${med.quantidadeMinima})`,
+      data: new Date().toISOString()
+    })),
+    ...alertasVencimento.map(med => ({
+      id: `venc_${med.id}`,
+      medicamento: med,
+      tipo: 'vencimento_proximo' as const,
+      mensagem: `Vence em ${Math.ceil((new Date(med.dataVencimento).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} dias`,
+      data: new Date().toISOString()
+    }))
   ];
 
   const getAlertIcon = (tipo: string) => {
@@ -100,7 +80,7 @@ const AlertasEstoque: React.FC<AlertasEstoqueProps> = ({ onBack }) => {
               <AlertTriangle className="h-6 w-6" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold">Alertas de Estoque Baixo</h1>
+              <h1 className="text-2xl font-bold">Alertas de Estoque</h1>
               <p className="text-white/80 text-sm">Monitoramento em tempo real</p>
             </div>
           </div>
@@ -110,7 +90,7 @@ const AlertasEstoque: React.FC<AlertasEstoqueProps> = ({ onBack }) => {
       {/* Content */}
       <div className="p-6">
         <div className="space-y-4">
-          {alertas.map((alerta, index) => (
+          {todos_alertas.map((alerta, index) => (
             <Card 
               key={alerta.id} 
               className="border-l-4 border-l-red-500 shadow-md hover:shadow-lg transition-all duration-200 animate-fade-in"
@@ -154,7 +134,7 @@ const AlertasEstoque: React.FC<AlertasEstoqueProps> = ({ onBack }) => {
           ))}
         </div>
 
-        {alertas.length === 0 && (
+        {todos_alertas.length === 0 && (
           <Card className="border-2 border-dashed border-muted-foreground/20">
             <CardContent className="p-12 text-center">
               <AlertTriangle className="h-12 w-12 text-muted-foreground/50 mx-auto mb-4" />
