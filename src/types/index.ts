@@ -7,6 +7,10 @@ export interface User {
   telefone: string;
 }
 
+export interface UserWithPassword extends User {
+  senhaHash: string;
+}
+
 export interface Medicamento {
   id: string;
   nome: string;

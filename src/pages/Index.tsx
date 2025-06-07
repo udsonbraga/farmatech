@@ -1,5 +1,6 @@
+
 import React, { useState } from 'react';
-import { toast } from 'sonner';
+import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import Login from '@/components/Login';
 import Cadastro from '@/components/Cadastro';
 import Dashboard from '@/components/Dashboard';
@@ -7,83 +8,48 @@ import AlertasEstoque from '@/components/AlertasEstoque';
 import EstoqueProdutos from '@/components/EstoqueProdutos';
 import MovimentacaoEstoque from '@/components/MovimentacaoEstoque';
 import RegistroVendas from '@/components/RegistroVendas';
-import { User } from '@/types';
 
 type Screen = 'login' | 'cadastro' | 'dashboard' | 'alertas' | 'estoque' | 'movimentacao' | 'vendas';
 
-const Index = () => {
+const AppContent = () => {
   const [currentScreen, setCurrentScreen] = useState<Screen>('login');
-  const [user, setUser] = useState<User | null>(null);
+  const { user, logout, isAuthenticated } = useAuth();
 
-  const handleLogin = (email: string, senha: string) => {
-    console.log('Login attempt:', { email, senha });
-    
-    // Simulação de login - em produção, isso seria uma chamada para a API
-    const mockUser: User = {
-      id: '1',
-      email,
-      farmaciaName: 'Farmácia Central',
-      responsavelName: 'João Silva',
-      telefone: '(11) 99999-9999'
-    };
-    
-    setUser(mockUser);
-    setCurrentScreen('dashboard');
-    
-    toast.success('Login realizado com sucesso!', {
-      description: `Bem-vindo, ${mockUser.responsavelName}!`
-    });
-  };
-
-  const handleRegister = (userData: {
-    farmaciaName: string;
-    responsavelName: string;
-    email: string;
-    senha: string;
-    telefone: string;
-  }) => {
-    console.log('Register attempt:', userData);
-    
-    // Simulação de cadastro - em produção, isso seria uma chamada para a API
-    const newUser: User = {
-      id: Date.now().toString(),
-      email: userData.email,
-      farmaciaName: userData.farmaciaName,
-      responsavelName: userData.responsavelName,
-      telefone: userData.telefone
-    };
-    
-    // Salva o usuário no localStorage para simular persistência
-    const users = JSON.parse(localStorage.getItem('farmatech-users') || '[]');
-    users.push(newUser);
-    localStorage.setItem('farmatech-users', JSON.stringify(users));
-    
-    // Não faz login automático - deixa o usuário ir para o login
-    console.log('Usuário cadastrado com sucesso:', newUser);
-  };
+  // Se estiver autenticado, navegar para o dashboard
+  React.useEffect(() => {
+    if (isAuthenticated && currentScreen === 'login') {
+      setCurrentScreen('dashboard');
+    } else if (!isAuthenticated && currentScreen !== 'login' && currentScreen !== 'cadastro') {
+      setCurrentScreen('login');
+    }
+  }, [isAuthenticated, currentScreen]);
 
   const handleLogout = () => {
-    setUser(null);
+    logout();
     setCurrentScreen('login');
-    toast.info('Logout realizado com sucesso!');
   };
 
   const renderScreen = () => {
+    // Se não estiver autenticado, só mostrar login ou cadastro
+    if (!isAuthenticated) {
+      switch (currentScreen) {
+        case 'cadastro':
+          return (
+            <Cadastro
+              onBackToLogin={() => setCurrentScreen('login')}
+            />
+          );
+        default:
+          return (
+            <Login
+              onShowRegister={() => setCurrentScreen('cadastro')}
+            />
+          );
+      }
+    }
+
+    // Se estiver autenticado, mostrar as telas internas
     switch (currentScreen) {
-      case 'login':
-        return (
-          <Login
-            onLogin={handleLogin}
-            onShowRegister={() => setCurrentScreen('cadastro')}
-          />
-        );
-      case 'cadastro':
-        return (
-          <Cadastro
-            onRegister={handleRegister}
-            onBackToLogin={() => setCurrentScreen('login')}
-          />
-        );
       case 'dashboard':
         return user ? (
           <Dashboard
@@ -125,6 +91,14 @@ const Index = () => {
   };
 
   return <>{renderScreen()}</>;
+};
+
+const Index = () => {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
+  );
 };
 
 export default Index;
