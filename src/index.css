@@ -1,4 +1,3 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -6,6 +5,23 @@
 /* Definition of the design system. All colors, gradients, fonts, etc should be defined here. */
 
 @layer base {
+  /* Adições para HTML e Body para garantir comportamento responsivo adequado */
+  html, body {
+    height: 100%; /* Garante que ocupem 100% da altura da viewport */
+    width: 100%; /* Garante que ocupem 100% da largura da viewport */
+    margin: 0;
+    padding: 0;
+    /* Remove qualquer overflow oculto que possa impedir o zoom e a rolagem */
+    overflow-x: hidden; /* Permite rolagem horizontal apenas se o conteúdo explicitamente necessitar e for responsivo */
+    overflow-y: auto;   /* Permite rolagem vertical normalmente */
+  }
+
+  /* Define o tamanho da fonte base e a altura da linha para melhor legibilidade */
+  html {
+    font-size: 16px; /* Base rem unit: 1rem = 16px */
+    line-height: 1.5;
+  }
+  
   :root {
     --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;

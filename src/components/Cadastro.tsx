@@ -52,13 +52,13 @@ const Cadastro: React.FC<CadastroProps> = ({ onBackToLogin }) => {
     }
 
     // Validar senha
-    if (!formData.senha) {
-      newErrors.senha = 'Senha é obrigatória';
-    } else if (formData.senha.length < 6) {
-      newErrors.senha = 'Senha deve ter pelo menos 6 caracteres';
-    } else if (!/(?=.*[a-zA-Z])(?=.*[0-9])/.test(formData.senha)) {
-      newErrors.senha = 'Senha deve conter pelo menos uma letra e um número';
-    }
+if (!formData.senha) {
+  newErrors.senha = 'Senha é obrigatória';
+} else if (formData.senha.length < 8) { // MUDAR DE 6 PARA 8
+  newErrors.senha = 'Senha deve ter pelo menos 8 caracteres'; // Mudar a mensagem
+} else if (!/(?=.*[a-zA-Z])(?=.*[0-9])/.test(formData.senha)) {
+  newErrors.senha = 'Senha deve conter pelo menos uma letra e um número';
+}
 
     // Validar confirmação de senha
     if (!formData.confirmarSenha) {

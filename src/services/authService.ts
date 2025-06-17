@@ -1,220 +1,156 @@
-
-import bcrypt from 'bcryptjs';
+// src/services/authService.ts
 import { User } from '@/types';
 
-export interface UserRegistration {
-  farmaciaName: string;
-  responsavelName: string;
-  email: string;
-  senha: string;
-  telefone: string;
-}
-
-export interface LoginCredentials {
-  email: string;
-  senha: string;
-}
+// Opcional: Adicione a biblioteca jwt-decode se quiser decodificar o token no frontend
+// Importar jwt_decode - você precisará instalar esta biblioteca: npm install jwt-decode
+// import { jwtDecode } from 'jwt-decode';
 
 export class AuthService {
-  private static readonly USERS_KEY = 'farmatech-users';
-  private static readonly CURRENT_USER_KEY = 'farmatech-current-user';
-  private static readonly SALT_ROUNDS = 10;
+  private static readonly API_BASE_URL = 'http://127.0.0.1:8000/api';
+  private static readonly ACCESS_TOKEN_KEY = 'access_token';
+  private static readonly REFRESH_TOKEN_KEY = 'refresh_token';
 
-  // Validações
-  static validateEmail(email: string): boolean {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
+  // Função para armazenar os tokens JWT
+  private static setTokens(access: string, refresh: string) {
+    localStorage.setItem(AuthService.ACCESS_TOKEN_KEY, access);
+    localStorage.setItem(AuthService.REFRESH_TOKEN_KEY, refresh);
   }
 
-  static validatePassword(password: string): { isValid: boolean; message?: string } {
-    if (password.length < 6) {
-      return { isValid: false, message: 'A senha deve ter pelo menos 6 caracteres' };
-    }
-    if (!/(?=.*[a-zA-Z])(?=.*[0-9])/.test(password)) {
-      return { isValid: false, message: 'A senha deve conter pelo menos uma letra e um número' };
-    }
-    return { isValid: true };
+  // Função para remover os tokens JWT (logout)
+  static logout() {
+    localStorage.removeItem(AuthService.ACCESS_TOKEN_KEY);
+    localStorage.removeItem(AuthService.REFRESH_TOKEN_KEY);
   }
 
-  static validatePhone(phone: string): boolean {
-    const phoneRegex = /^\(\d{2}\)\s\d{4,5}-\d{4}$/;
-    return phoneRegex.test(phone);
+  // Função para obter o token de acesso
+  static getAccessToken(): string | null {
+    return localStorage.getItem(AuthService.ACCESS_TOKEN_KEY);
   }
 
-  // Gerenciamento de usuários
-  static getUsers(): User[] {
-    try {
-      const users = localStorage.getItem(this.USERS_KEY);
-      return users ? JSON.parse(users) : [];
-    } catch (error) {
-      console.error('Erro ao carregar usuários:', error);
-      return [];
-    }
+  // Função para obter o token de refresh
+  static getRefreshToken(): string | null {
+    return localStorage.getItem(AuthService.REFRESH_TOKEN_KEY);
   }
 
-  static saveUsers(users: User[]): void {
-    try {
-      localStorage.setItem(this.USERS_KEY, JSON.stringify(users));
-    } catch (error) {
-      console.error('Erro ao salvar usuários:', error);
-      throw new Error('Erro ao salvar dados do usuário');
-    }
+  // Função para verificar se o usuário está logado (verificando a existência do token)
+  static isAuthenticated(): boolean {
+    return !!AuthService.getAccessToken();
   }
 
-  static userExists(email: string): boolean {
-    const users = this.getUsers();
-    return users.some(user => user.email.toLowerCase() === email.toLowerCase());
-  }
-
-  // Autenticação
-  static async hashPassword(password: string): Promise<string> {
-    try {
-      return await bcrypt.hash(password, this.SALT_ROUNDS);
-    } catch (error) {
-      console.error('Erro ao gerar hash da senha:', error);
-      throw new Error('Erro no processamento da senha');
-    }
-  }
-
-  static async verifyPassword(password: string, hash: string): Promise<boolean> {
-    try {
-      return await bcrypt.compare(password, hash);
-    } catch (error) {
-      console.error('Erro ao verificar senha:', error);
-      return false;
-    }
-  }
-
-  // Registro
-  static async register(userData: UserRegistration): Promise<{ success: boolean; message: string; user?: User }> {
-    try {
-      // Validações
-      if (!this.validateEmail(userData.email)) {
-        return { success: false, message: 'E-mail inválido' };
-      }
-
-      const passwordValidation = this.validatePassword(userData.senha);
-      if (!passwordValidation.isValid) {
-        return { success: false, message: passwordValidation.message! };
-      }
-
-      if (!this.validatePhone(userData.telefone)) {
-        return { success: false, message: 'Telefone deve estar no formato (XX) XXXXX-XXXX' };
-      }
-
-      if (userData.farmaciaName.trim().length < 2) {
-        return { success: false, message: 'Nome da farmácia deve ter pelo menos 2 caracteres' };
-      }
-
-      if (userData.responsavelName.trim().length < 2) {
-        return { success: false, message: 'Nome do responsável deve ter pelo menos 2 caracteres' };
-      }
-
-      // Verificar se usuário já existe
-      if (this.userExists(userData.email)) {
-        return { success: false, message: 'Este e-mail já está cadastrado' };
-      }
-
-      // Criar usuário
-      const hashedPassword = await this.hashPassword(userData.senha);
-      const newUser: User & { senhaHash: string } = {
-        id: Date.now().toString(),
-        email: userData.email.toLowerCase(),
-        farmaciaName: userData.farmaciaName.trim(),
-        responsavelName: userData.responsavelName.trim(),
-        telefone: userData.telefone,
-        senhaHash: hashedPassword
-      };
-
-      // Salvar usuário
-      const users = this.getUsers();
-      users.push(newUser);
-      this.saveUsers(users);
-
-      // Retornar usuário sem a senha hash
-      const { senhaHash, ...userWithoutPassword } = newUser;
-      return { 
-        success: true, 
-        message: 'Usuário cadastrado com sucesso!',
-        user: userWithoutPassword
-      };
-    } catch (error) {
-      console.error('Erro no cadastro:', error);
-      return { success: false, message: 'Erro interno. Tente novamente.' };
-    }
-  }
-
-  // Login
-  static async login(credentials: LoginCredentials): Promise<{ success: boolean; message: string; user?: User }> {
-    try {
-      // Validações básicas
-      if (!this.validateEmail(credentials.email)) {
-        return { success: false, message: 'E-mail inválido' };
-      }
-
-      if (!credentials.senha || credentials.senha.length < 1) {
-        return { success: false, message: 'Senha é obrigatória' };
-      }
-
-      // Buscar usuário
-      const users = this.getUsers();
-      const user = users.find(u => u.email.toLowerCase() === credentials.email.toLowerCase());
-
-      if (!user) {
-        return { success: false, message: 'E-mail ou senha incorretos' };
-      }
-
-      // Verificar senha
-      const isPasswordValid = await this.verifyPassword(credentials.senha, (user as any).senhaHash);
-      
-      if (!isPasswordValid) {
-        return { success: false, message: 'E-mail ou senha incorretos' };
-      }
-
-      // Salvar sessão
-      const { senhaHash, ...userWithoutPassword } = user as any;
-      this.saveCurrentUser(userWithoutPassword);
-
-      return { 
-        success: true, 
-        message: 'Login realizado com sucesso!',
-        user: userWithoutPassword
-      };
-    } catch (error) {
-      console.error('Erro no login:', error);
-      return { success: false, message: 'Erro interno. Tente novamente.' };
-    }
-  }
-
-  // Sessão
-  static saveCurrentUser(user: User): void {
-    try {
-      localStorage.setItem(this.CURRENT_USER_KEY, JSON.stringify(user));
-    } catch (error) {
-      console.error('Erro ao salvar sessão:', error);
-    }
-  }
-
+  // Função para simular o "usuário atual" (baseado nos tokens, não mais em um objeto User completo)
+  // Para uma implementação mais completa, você decodificaria o token aqui.
   static getCurrentUser(): User | null {
+    const accessToken = AuthService.getAccessToken();
+    if (accessToken) {
+      // Em uma aplicação real, você decodificaria o accessToken aqui para obter
+      // id, email, username e farmacia_id do payload.
+      // Ex: const decodedToken = jwtDecode(accessToken);
+      // return { id: decodedToken.user_id, email: decodedToken.email, ... };
+      // Por enquanto, apenas retornamos um objeto User mínimo se o token existe.
+      return { id: 0, email: '', username: '', access: accessToken }; // Valores placeholder
+    }
+    return null;
+  }
+
+  // Função para registrar um novo usuário e fazer login (obtendo JWTs)
+  // AJUSTADO: Mapeando os campos do frontend para o que o backend espera (senha, farmaciaName, responsavelName)
+  static async register(userData: { email: string, senha: string, telefone?: string, farmaciaName: string, responsavelName: string }): Promise<{ success: boolean, user?: User, error?: string }> {
     try {
-      const user = localStorage.getItem(this.CURRENT_USER_KEY);
-      return user ? JSON.parse(user) : null;
-    } catch (error) {
-      console.error('Erro ao carregar sessão:', error);
+      // O payload deve corresponder EXATAMENTE ao que seu RegisterSerializer no Django espera
+      const payload = {
+        username: userData.email, // Assume que o username do Django é o email
+        password: userData.senha, // Mapeando a senha do formData para 'password'
+        email: userData.email, // Incluindo email, caso o serializer precise
+        telefone: userData.telefone,
+        farmaciaName: userData.farmaciaName, // Este campo é o que o backend está reclamando
+        responsavelName: userData.responsavelName, // Este campo é o que o backend está reclamando
+        senha: userData.senha, // INCLUÍDO NOVAMENTE: Se o seu serializer espera 'senha' diretamente para validação
+      };
+
+      const response = await fetch(`${AuthService.API_BASE_URL}/register/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        AuthService.setTokens(data.access, data.refresh);
+        return { success: true, user: { ...data.user, access: data.access, refresh: data.refresh } };
+      } else {
+        const errorMessage = data.message || JSON.stringify(data) || 'Erro no registro.';
+        return { success: false, error: errorMessage };
+      }
+    } catch (error: any) {
+      console.error('Erro ao registrar:', error);
+      return { success: false, error: error.message || 'Erro de rede.' };
+    }
+  }
+
+  // Função para fazer login e obter JWTs
+  static async login(credentials: { email: string, senha: string }): Promise<{ success: boolean, user?: User, error?: string }> {
+    try {
+      const payload = {
+        username: credentials.email, // Backend espera 'username' para o email
+        password: credentials.senha, // Backend espera 'password' para a senha
+      };
+
+      const response = await fetch(`${AuthService.API_BASE_URL}/login/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload), // Envia o payload com 'username' e 'password'
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        AuthService.setTokens(data.access, data.refresh);
+        return { success: true, user: { ...data.user, access: data.access, refresh: data.refresh } };
+      } else {
+        const errorMessage = data.message || JSON.stringify(data) || 'Credenciais inválidas.';
+        return { success: false, error: errorMessage };
+      }
+    } catch (error: any) {
+      console.error('Erro ao fazer login:', error);
+      return { success: false, error: error.message || 'Erro de rede.' };
+    }
+  }
+
+  // Opcional: Função para renovar o token de acesso usando o token de refresh
+  static async refreshAccessToken(): Promise<string | null> {
+    const refreshToken = AuthService.getRefreshToken();
+    if (!refreshToken) {
+      AuthService.logout();
       return null;
     }
-  }
 
-  static logout(): void {
     try {
-      localStorage.removeItem(this.CURRENT_USER_KEY);
-    } catch (error) {
-      console.error('Erro no logout:', error);
-    }
-  }
+      const response = await fetch(`${AuthService.API_BASE_URL}/token/refresh/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ refresh: refreshToken }),
+      });
 
-  // Verificar se está logado
-  static isAuthenticated(): boolean {
-    return this.getCurrentUser() !== null;
+      const data = await response.json();
+
+      if (response.ok && data.access) {
+        localStorage.setItem(AuthService.ACCESS_TOKEN_KEY, data.access);
+        return data.access;
+      } else {
+        AuthService.logout();
+        return null;
+      }
+    } catch (error) {
+      console.error('Erro ao renovar token de acesso:', error);
+      AuthService.logout();
+      return null;
+    }
   }
 }

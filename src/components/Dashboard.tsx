@@ -1,262 +1,205 @@
-
+// src/components/Dashboard.tsx
 import React, { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { 
-  Package, 
-  ArrowRight, 
-  AlertTriangle, 
-  TrendingUp, 
-  ShoppingBag, 
-  DollarSign,
-  LogOut,
-  Plus
-} from 'lucide-react';
-import { User } from '@/types';
-import { useLocalStorage } from '@/hooks/useLocalStorage';
-import { useConfirmExit } from '@/hooks/useConfirmExit';
-import ConfirmDialog from '@/components/ConfirmDialog';
-import MovimentacoesChart from '@/components/MovimentacoesChart';
+import { ArrowRight, Package, AlertTriangle, LineChart, Clock, ShoppingCart, Sparkles } from 'lucide-react'; 
+import { useAuth } from '@/contexts/AuthContext';
+import { toast } from 'sonner';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 interface DashboardProps {
-  user: User;
-  onLogout: () => void;
-  onNavigateToAlertas: () => void;
-  onNavigateToEstoque: () => void;
-  onNavigateToMovimentacao: () => void;
-  onNavigateToVendas: () => void;
+  onProdutosEstoqueClick: () => void;
+  onMovimentacaoEstoqueClick: () => void;
+  onAlertasEstoqueClick: () => void;
+  onAnaliseMovimentacoesClick: () => void;
+  onMedicamentosAVencerClick: () => void;
+  onRegistroVendasClick: () => void;
+  onAnaliseIaClick: () => void;
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ 
-  user, 
-  onLogout, 
-  onNavigateToAlertas,
-  onNavigateToEstoque,
-  onNavigateToMovimentacao,
-  onNavigateToVendas
+  onProdutosEstoqueClick, 
+  onMovimentacaoEstoqueClick, 
+  onAlertasEstoqueClick,
+  onAnaliseMovimentacoesClick,
+  onMedicamentosAVencerClick,
+  onRegistroVendasClick,
+  onAnaliseIaClick,
 }) => {
-  const [medicamentos] = useLocalStorage('medicamentos', []);
-  const [vendas] = useLocalStorage('vendas', []);
-  const [movimentos] = useLocalStorage('movimentos', []);
-  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-  const [showMovimentacoesChart, setShowMovimentacoesChart] = useState(false);
+  const { currentUser, logout } = useAuth();
+  const [showConfirmLogout, setShowConfirmLogout] = useState(false);
 
-  // Hook para confirmação de saída do navegador
-  useConfirmExit(true);
-
-  // Calcular estatísticas
-  const totalProdutos = medicamentos.length;
-  const alertasAtivos = medicamentos.filter(med => med.quantidade <= med.quantidadeMinima).length;
-  const vendasMes = vendas.reduce((total, venda) => total + venda.total, 0);
-  const medicamentosVencendo = medicamentos.filter(med => {
-    const hoje = new Date();
-    const vencimento = new Date(med.dataVencimento);
-    const diffTime = vencimento.getTime() - hoje.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays <= 30 && diffDays > 0;
-  }).length;
-
-  const handleLogoutClick = () => {
-    setShowLogoutConfirm(true);
+  const confirmLogout = () => {
+    logout();
+    toast.success('Você foi desconectado com sucesso.', { duration: 2000 });
+    setShowConfirmLogout(false);
   };
 
-  const handleConfirmLogout = () => {
-    onLogout();
+  const handleLogout = () => {
+    setShowConfirmLogout(true);
   };
-
-  const handleMovimentacoesClick = () => {
-    if (movimentos.length > 0) {
-      setShowMovimentacoesChart(true);
-    } else {
-      onNavigateToMovimentacao();
-    }
-  };
-
-  const dashboardCards = [
-    {
-      title: 'Produtos em Estoque',
-      icon: Package,
-      bgColor: 'farmatech-teal',
-      textColor: 'text-white',
-      onClick: onNavigateToEstoque
-    },
-    {
-      title: 'Entradas e Saídas',
-      icon: ArrowRight,
-      bgColor: 'farmatech-blue',
-      textColor: 'text-white',
-      onClick: onNavigateToMovimentacao
-    },
-    {
-      title: 'Alertas de Estoque Baixo',
-      icon: AlertTriangle,
-      bgColor: 'farmatech-orange',
-      textColor: 'text-white',
-      onClick: onNavigateToAlertas
-    },
-    {
-      title: 'Análise de Movimentações',
-      icon: TrendingUp,
-      bgColor: 'farmatech-blue',
-      textColor: 'text-white',
-      onClick: handleMovimentacoesClick
-    },
-    {
-      title: 'Medicamentos a Vencer',
-      icon: ShoppingBag,
-      bgColor: 'farmatech-orange',
-      textColor: 'text-white',
-      onClick: onNavigateToEstoque
-    },
-    {
-      title: 'Registro de Vendas',
-      icon: DollarSign,
-      bgColor: 'farmatech-teal',
-      textColor: 'text-white',
-      onClick: onNavigateToVendas
-    }
-  ];
-
-  if (showMovimentacoesChart) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-farmatech-teal/5 to-farmatech-blue/5">
-        {/* Header */}
-        <div className="farmatech-blue text-white p-6 rounded-b-3xl shadow-lg">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowMovimentacoesChart(false)}
-                className="text-white hover:bg-white/20 p-2"
-              >
-                <ArrowRight className="h-5 w-5 rotate-180" />
-              </Button>
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-white/20 rounded-full">
-                  <TrendingUp className="h-6 w-6" />
-                </div>
-                <div>
-                  <h1 className="text-2xl font-bold">Análise de Movimentações</h1>
-                  <p className="text-white/80 text-sm">Gráficos e estatísticas</p>
-                </div>
-              </div>
-            </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleLogoutClick}
-              className="text-white hover:bg-white/20"
-            >
-              <LogOut className="h-4 w-4 mr-2" />
-              Sair
-            </Button>
-          </div>
-        </div>
-
-        {/* Chart Content */}
-        <div className="p-6">
-          <MovimentacoesChart movimentos={movimentos} />
-        </div>
-
-        <ConfirmDialog
-          open={showLogoutConfirm}
-          onOpenChange={setShowLogoutConfirm}
-          onConfirm={handleConfirmLogout}
-        />
-      </div>
-    );
-  }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-farmatech-teal/5 to-farmatech-blue/5">
+    <div className="min-h-screen bg-gradient-to-br from-farmatech-teal/10 to-farmatech-blue/10 flex flex-col">
       {/* Header */}
-      <div className="farmatech-teal text-white p-6 rounded-b-3xl shadow-lg">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-white/20 rounded-full">
-              <Plus className="h-6 w-6" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold">FarmaTech</h1>
-              <p className="text-white/80 text-sm">{user.farmaciaName}</p>
-            </div>
+      <div className="farmatech-blue text-white p-6 rounded-b-3xl shadow-lg flex justify-between items-center flex-shrink-0">
+        <div className="flex items-center gap-2">
+          <div className="p-2 rounded-full bg-white/20">
+            <ArrowRight className="h-6 w-6" />
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleLogoutClick}
-            className="text-white hover:bg-white/20"
-          >
-            <LogOut className="h-4 w-4 mr-2" />
-            Sair
-          </Button>
+          <div>
+            <h1 className="text-2xl font-bold">FarmaTech</h1>
+            {currentUser && (
+              <p className="text-sm text-white/80">Olá, {currentUser.username || currentUser.email}!</p>
+            )}
+          </div>
         </div>
+        <Button onClick={handleLogout} variant="ghost" className="text-white hover:bg-white/20">
+          Sair
+        </Button>
       </div>
 
       {/* Main Content */}
-      <div className="p-6">
-        <div className="mb-6">
-          <h2 className="text-2xl font-bold text-foreground mb-2">Painel Principal</h2>
-          <p className="text-muted-foreground">Bem-vindo, {user.responsavelName}</p>
-        </div>
+      <div className="flex-grow p-4 sm:p-6 lg:p-8 overflow-y-auto">
+        <h2 className="text-3xl font-bold mb-6 text-center text-foreground">
+          Painel Principal
+        </h2>
+        {currentUser && (
+          <p className="text-lg text-center text-muted-foreground mb-8">
+            Sua farmácia: ID {currentUser.farmacia_id}
+          </p>
+        )}
 
-        {/* Dashboard Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          {dashboardCards.map((card, index) => (
-            <Card 
-              key={index} 
-              className={`${card.bgColor} border-0 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer transform hover:scale-105 animate-fade-in`}
-              style={{ animationDelay: `${index * 100}ms` }}
-              onClick={card.onClick}
-            >
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div className={`${card.textColor}`}>
-                    <card.icon className="h-8 w-8 mb-3" />
-                    <h3 className="text-lg font-semibold">{card.title}</h3>
-                  </div>
-                  <ArrowRight className={`h-5 w-5 ${card.textColor} opacity-70`} />
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
+          {/* Produtos em Estoque */}
+          <Card 
+            className="flex items-center justify-between p-6 cursor-pointer hover:shadow-lg transition-all duration-200 bg-card"
+            onClick={onProdutosEstoqueClick}
+          >
+            <div className="flex items-center gap-4">
+              <div className="p-3 rounded-full bg-farmatech-teal text-white">
+                <Package className="h-6 w-6" />
+              </div>
+              <h3 className="text-xl font-semibold">Produtos em Estoque</h3>
+            </div>
+            <ArrowRight className="h-6 w-6 text-muted-foreground" />
+          </Card>
 
-        {/* Quick Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card className="border-2 border-farmatech-teal/20">
-            <CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold text-farmatech-teal">{totalProdutos}</div>
-              <div className="text-sm text-muted-foreground">Produtos Cadastrados</div>
-            </CardContent>
+          {/* Entradas e Saídas */}
+          <Card 
+            className="flex items-center justify-between p-6 cursor-pointer hover:shadow-lg transition-all duration-200 bg-card"
+            onClick={onMovimentacaoEstoqueClick}
+          >
+            <div className="flex items-center gap-4">
+              <div className="p-3 rounded-full bg-farmatech-blue text-white">
+                <ArrowRight className="h-6 w-6" />
+              </div>
+              <h3 className="text-xl font-semibold">Entradas e Saídas</h3>
+            </div>
+            <ArrowRight className="h-6 w-6 text-muted-foreground" />
           </Card>
-          <Card className="border-2 border-farmatech-orange/20">
-            <CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold text-farmatech-orange">{alertasAtivos}</div>
-              <div className="text-sm text-muted-foreground">Alertas Ativos</div>
-            </CardContent>
+
+          {/* Alertas de Estoque */}
+          <Card 
+            className="flex items-center justify-between p-6 cursor-pointer hover:shadow-lg transition-all duration-200 bg-card"
+            onClick={onAlertasEstoqueClick}
+          >
+            <div className="flex items-center gap-4">
+              <div className="p-3 rounded-full bg-farmatech-orange text-white">
+                <AlertTriangle className="h-6 w-6" />
+              </div>
+              <h3 className="text-xl font-semibold">Alertas de Estoque</h3>
+            </div>
+            <ArrowRight className="h-6 w-6 text-muted-foreground" />
           </Card>
-          <Card className="border-2 border-farmatech-blue/20">
-            <CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold text-farmatech-blue">R$ {vendasMes.toFixed(2)}</div>
-              <div className="text-sm text-muted-foreground">Vendas do Mês</div>
-            </CardContent>
+
+          {/* Análise de Movimentações */}
+          <Card 
+            className="flex items-center justify-between p-6 cursor-pointer hover:shadow-lg transition-all duration-200 bg-card"
+            onClick={onAnaliseMovimentacoesClick}
+          >
+            <div className="flex items-center gap-4">
+              <div className="p-3 rounded-full bg-farmatech-blue text-white">
+                <LineChart className="h-6 w-6" />
+              </div>
+              <h3 className="text-xl font-semibold">Análise de Movimentações</h3>
+            </div>
+            <ArrowRight className="h-6 w-6 text-muted-foreground" />
           </Card>
-          <Card className="border-2 border-farmatech-orange/20">
-            <CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold text-farmatech-orange">{medicamentosVencendo}</div>
-              <div className="text-sm text-muted-foreground">Vencendo em 30 dias</div>
-            </CardContent>
+
+          {/* Medicamentos a Vencer */}
+          <Card 
+            className="flex items-center justify-between p-6 cursor-pointer hover:shadow-lg transition-all duration-200 bg-card"
+            onClick={onMedicamentosAVencerClick}
+          >
+            <div className="flex items-center gap-4">
+              <div className="p-3 rounded-full bg-farmatech-orange text-white">
+                <Clock className="h-6 w-6" />
+              </div>
+              <h3 className="text-xl font-semibold">Medicamentos a Vencer</h3>
+            </div>
+            <ArrowRight className="h-6 w-6 text-muted-foreground" />
+          </Card>
+
+          {/* Registro de Vendas */}
+          <Card 
+            className="flex items-center justify-between p-6 cursor-pointer hover:shadow-lg transition-all duration-200 bg-card"
+            onClick={onRegistroVendasClick}
+          >
+            <div className="flex items-center gap-4">
+              <div className="p-3 rounded-full bg-farmatech-teal text-white">
+                <ShoppingCart className="h-6 w-6" />
+              </div>
+              <h3 className="text-xl font-semibold">Registro de Vendas</h3>
+            </div>
+            <ArrowRight className="h-6 w-6 text-muted-foreground" />
+          </Card>
+
+          {/* Análise com IA */}
+          <Card 
+            className="flex items-center justify-between p-6 cursor-pointer hover:shadow-lg transition-all duration-200 bg-card"
+            onClick={onAnaliseIaClick}
+          >
+            <div className="flex items-center gap-4">
+              <div className="p-3 rounded-full bg-farmatech-blue text-white">
+                <Sparkles className="h-6 w-6" />
+              </div>
+              <h3 className="text-xl font-semibold">Análise com IA</h3>
+            </div>
+            <ArrowRight className="h-6 w-6 text-muted-foreground" />
           </Card>
         </div>
       </div>
 
-      <ConfirmDialog
-        open={showLogoutConfirm}
-        onOpenChange={setShowLogoutConfirm}
-        onConfirm={handleConfirmLogout}
-      />
+      {/* AlertDialog para confirmação de Logout */}
+      <AlertDialog open={showConfirmLogout} onOpenChange={setShowConfirmLogout}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Realmente deseja sair?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Você será desconectado da sua conta. Certifique-se de que salvou seu trabalho.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel asChild>
+              <Button variant="outline" onClick={() => setShowConfirmLogout(false)}>Não</Button>
+            </AlertDialogCancel>
+            <AlertDialogAction asChild>
+              <Button onClick={confirmLogout} className="farmatech-danger hover:bg-farmatech-danger/90">Sim</Button>
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

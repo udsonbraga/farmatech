@@ -1,26 +1,62 @@
+// src/components/AlertasEstoque.tsx
 
-import React from 'react';
+import React, { useState, useEffect } from 'react'; // Importar useEffect e useState
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, AlertTriangle, Clock, Package } from 'lucide-react';
-import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { Medicamento } from '@/types'; // Removido useLocalStorage
+import { MedicamentoService } from '@/services/medicamentoService'; // Importar MedicamentoService
+import { toast } from 'sonner';
 
 interface AlertasEstoqueProps {
   onBack: () => void;
 }
 
 const AlertasEstoque: React.FC<AlertasEstoqueProps> = ({ onBack }) => {
-  const [medicamentos] = useLocalStorage('medicamentos', []);
+  // Alterado: Não usar useLocalStorage para medicamentos, mas sim useState
+  const [medicamentos, setMedicamentos] = useState<Medicamento[]>([]);
+  const [loadingMedicamentos, setLoadingMedicamentos] = useState(true); // Novo estado de carregamento
+  const [errorMedicamentos, setErrorMedicamentos] = useState<string | null>(null); // Novo estado de erro
 
-  // Gerar alertas baseados nos dados reais
+  // NOVO: useEffect para carregar medicamentos do backend
+  useEffect(() => {
+    const fetchMedicamentos = async () => {
+      setLoadingMedicamentos(true);
+      setErrorMedicamentos(null);
+      try {
+        const data = await MedicamentoService.getMedicamentos();
+        setMedicamentos(data);
+      } catch (error: any) {
+        console.error('Erro ao carregar medicamentos para alertas:', error);
+        setErrorMedicamentos(error.message || 'Falha ao carregar medicamentos.');
+        toast.error('Erro ao carregar alertas', {
+          description: error.message || 'Verifique sua conexão e tente novamente.'
+        });
+      } finally {
+        setLoadingMedicamentos(false);
+      }
+    };
+
+    fetchMedicamentos();
+  }, []); // Executar apenas uma vez na montagem do componente
+
+  // Gerar alertas baseados nos dados reais (agora vindo do backend)
   const alertasEstoqueBaixo = medicamentos.filter(med => med.quantidade <= med.quantidadeMinima);
   const alertasVencimento = medicamentos.filter(med => {
+    // Certifique-se de que dataVencimento é um string válido (YYYY-MM-DD)
+    if (!med.dataVencimento) return false; 
+
     const hoje = new Date();
-    const vencimento = new Date(med.dataVencimento);
+    // Ajustar a data de vencimento para evitar problemas de fuso horário
+    // Criar a data com base em ano, mês-1, dia para evitar fuso horário
+    const [ano, mes, dia] = med.dataVencimento.split('-').map(Number);
+    const vencimento = new Date(ano, mes - 1, dia);
+
     const diffTime = vencimento.getTime() - hoje.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays <= 30 && diffDays > 0;
+    // Alerta se vence em até 30 dias (inclusive) e ainda não venceu
+    return diffDays <= 30 && diffDays > 0; 
   });
 
   const todos_alertas = [
@@ -54,11 +90,11 @@ const AlertasEstoque: React.FC<AlertasEstoqueProps> = ({ onBack }) => {
   const getAlertColor = (tipo: string) => {
     switch (tipo) {
       case 'estoque_baixo':
-        return 'farmatech-danger';
+        return 'bg-red-500'; // Exemplo de classe Tailwind para cor de perigo
       case 'vencimento_proximo':
-        return 'farmatech-warning';
+        return 'bg-orange-500'; // Exemplo de classe Tailwind para cor de aviso
       default:
-        return 'farmatech-orange';
+        return 'bg-gray-500'; // Cor padrão
     }
   };
 
@@ -90,63 +126,68 @@ const AlertasEstoque: React.FC<AlertasEstoqueProps> = ({ onBack }) => {
       {/* Content */}
       <div className="p-6">
         <div className="space-y-4">
-          {todos_alertas.map((alerta, index) => (
-            <Card 
-              key={alerta.id} 
-              className="border-l-4 border-l-red-500 shadow-md hover:shadow-lg transition-all duration-200 animate-fade-in"
-              style={{ animationDelay: `${index * 100}ms` }}
-            >
-              <CardContent className="p-6">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-start gap-4">
-                    <div className={`p-3 rounded-full ${getAlertColor(alerta.tipo)} text-white`}>
-                      {getAlertIcon(alerta.tipo)}
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <h3 className="text-lg font-semibold text-foreground">
-                          {alerta.medicamento.nome}
-                        </h3>
-                        <Badge variant="destructive" className="text-xs">
-                          {alerta.medicamento.quantidade} unid.
-                        </Badge>
-                      </div>
-                      <p className="text-muted-foreground mb-2">
-                        {alerta.mensagem}
-                      </p>
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                        <span>Mínimo: {alerta.medicamento.quantidadeMinima} unid.</span>
-                        <span>•</span>
-                        <span>Categoria: {alerta.medicamento.categoria}</span>
-                        <span>•</span>
-                        <span>R$ {alerta.medicamento.preco.toFixed(2)}</span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-sm text-muted-foreground">
-                      {new Date(alerta.data).toLocaleDateString('pt-BR')}
-                    </div>
-                  </div>
-                </div>
+          {loadingMedicamentos ? (
+            <p className="text-center text-muted-foreground">Carregando alertas...</p>
+          ) : errorMedicamentos ? (
+            <p className="text-center text-red-500">{errorMedicamentos}</p>
+          ) : todos_alertas.length === 0 ? (
+            <Card className="border-2 border-dashed border-muted-foreground/20">
+              <CardContent className="p-12 text-center">
+                <AlertTriangle className="h-12 w-12 text-muted-foreground/50 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-muted-foreground mb-2">
+                  Nenhum alerta ativo
+                </h3>
+                <p className="text-muted-foreground">
+                  Todos os medicamentos estão com estoque adequado ou foram cadastrados sem data de vencimento.
+                </p>
               </CardContent>
             </Card>
-          ))}
+          ) : (
+            todos_alertas.map((alerta, index) => (
+              <Card 
+                key={alerta.id} 
+                className={`border-l-4 ${alerta.tipo === 'estoque_baixo' ? 'border-red-500' : 'border-orange-500'} shadow-md hover:shadow-lg transition-all duration-200 animate-fade-in`}
+                style={{ animationDelay: `${index * 100}ms` }}
+              >
+                <CardContent className="p-6">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-start gap-4">
+                      <div className={`p-3 rounded-full ${getAlertColor(alerta.tipo)} text-white`}>
+                        {getAlertIcon(alerta.tipo)}
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <h3 className="text-lg font-semibold text-foreground">
+                            {alerta.medicamento.nome}
+                          </h3>
+                          <Badge variant="destructive" className="text-xs">
+                            {alerta.medicamento.quantidade} unid.
+                          </Badge>
+                        </div>
+                        <p className="text-muted-foreground mb-2">
+                          {alerta.mensagem}
+                        </p>
+                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                          <span>Mínimo: {alerta.medicamento.quantidadeMinima} unid.</span>
+                          <span>•</span>
+                          <span>Categoria: {alerta.medicamento.categoria}</span>
+                          <span>•</span>
+                          {/* Usar encadeamento opcional e toFixed para segurança */}
+                          <span>R$ {alerta.medicamento.preco?.toFixed(2)}</span> 
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-sm text-muted-foreground">
+                        {new Date(alerta.data).toLocaleDateString('pt-BR')}
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))
+          )}
         </div>
-
-        {todos_alertas.length === 0 && (
-          <Card className="border-2 border-dashed border-muted-foreground/20">
-            <CardContent className="p-12 text-center">
-              <AlertTriangle className="h-12 w-12 text-muted-foreground/50 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-muted-foreground mb-2">
-                Nenhum alerta ativo
-              </h3>
-              <p className="text-muted-foreground">
-                Todos os medicamentos estão com estoque adequado.
-              </p>
-            </CardContent>
-          </Card>
-        )}
       </div>
     </div>
   );

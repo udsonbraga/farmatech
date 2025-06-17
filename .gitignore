@@ -1,5 +1,31 @@
-# Logs
-logs
+# Ignorar pastas de dependências (Node.js/NPM/Yarn)
+node_modules/
+yarn.lock
+package-lock.json
+
+# Ignorar ambientes virtuais Python
+.venv/
+farmatech_backend/venv/
+__pycache__/
+*.pyc
+
+# Ignorar arquivos de configuração de ambiente
+.env
+.env.*
+
+# Ignorar pastas de build e distribuição do Frontend (React/Vite)
+build/
+dist/
+dist-ssr/ # Adicionado do seu input
+.vite/
+.parcel-cache/
+
+# Ignorar bancos de dados e mídias do Backend (Django)
+*.sqlite3
+media/  # Pasta para uploads de mídia, se houver
+static_root/ # Pasta para arquivos estáticos coletados, se houver
+
+# Logs específicos
 *.log
 npm-debug.log*
 yarn-debug.log*
@@ -7,18 +33,15 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
-*.local
+# Configurações de IDEs e arquivos temporários
+.vscode/ # Já presente no seu input, mantém
+.idea/ # Já presente no seu input, mantém
+*.suo # Adicionado do seu input (Visual Studio/C#)
+*.ntvs* # Adicionado do seu input (Node.js Tools for Visual Studio)
+*.njsproj # Adicionado do seu input (Node.js Project)
+*.sln # Adicionado do seu input (Solution file)
+*.sw? # Adicionado do seu input (Vim swap files)
 
-# Editor directories and files
-.vscode/*
-!.vscode/extensions.json
-.idea
-.DS_Store
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
+# Ignorar arquivos específicos do sistema operacional
+.DS_Store # macOS, já presente
+Thumbs.db # Windows, já presente

@@ -1,5 +1,6 @@
+// src/components/MovimentacaoEstoque.tsx
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,16 +8,22 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, ArrowRight, ArrowDown, ArrowUp } from 'lucide-react';
 import { Medicamento, Movimento } from '@/types';
-import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { toast } from 'sonner';
+import { MedicamentoService } from '@/services/medicamentoService';
+import { MovimentoService } from '@/services/movimentoService'; // Importar o MovimentoService
 
 interface MovimentacaoEstoqueProps {
   onBack: () => void;
 }
 
 const MovimentacaoEstoque: React.FC<MovimentacaoEstoqueProps> = ({ onBack }) => {
-  const [medicamentos, setMedicamentos] = useLocalStorage<Medicamento[]>('medicamentos', []);
-  const [movimentos, setMovimentos] = useLocalStorage<Movimento[]>('movimentos', []);
+  const [medicamentos, setMedicamentos] = useState<Medicamento[]>([]);
+  const [movimentos, setMovimentos] = useState<Movimento[]>([]); // Agora será populado do backend
+  const [loadingMedicamentos, setLoadingMedicamentos] = useState(true);
+  const [errorMedicamentos, setErrorMedicamentos] = useState<string | null>(null);
+  const [loadingMovimentos, setLoadingMovimentos] = useState(true); // Novo estado para carregamento de movimentos
+  const [errorMovimentos, setErrorMovimentos] = useState<string | null>(null); // Novo estado para erro de movimentos
+
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({
     medicamentoId: '',
@@ -24,47 +31,118 @@ const MovimentacaoEstoque: React.FC<MovimentacaoEstoqueProps> = ({ onBack }) => 
     quantidade: '',
     observacoes: ''
   });
+  const [isSubmitting, setIsSubmitting] = useState(false); // Novo estado para controlar o envio do formulário
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // useEffect para carregar MEDICAMENTOS do backend
+  useEffect(() => {
+    const fetchMedicamentos = async () => {
+      setLoadingMedicamentos(true);
+      setErrorMedicamentos(null);
+      try {
+        const data = await MedicamentoService.getMedicamentos();
+        setMedicamentos(data);
+      } catch (error: any) {
+        console.error('Erro ao carregar medicamentos para movimentação:', error);
+        setErrorMedicamentos(error.message || 'Falha ao carregar medicamentos.');
+        toast.error('Erro ao carregar medicamentos', {
+          description: error.message || 'Verifique sua conexão e tente novamente.'
+        });
+      } finally {
+        setLoadingMedicamentos(false);
+      }
+    };
+
+    fetchMedicamentos();
+  }, []);
+
+  // NOVO: useEffect para carregar MOVIMENTOS do backend
+  useEffect(() => {
+    const fetchMovimentos = async () => {
+      setLoadingMovimentos(true);
+      setErrorMovimentos(null);
+      try {
+        const data = await MovimentoService.getMovimentos();
+        setMovimentos(data);
+      } catch (error: any) {
+        console.error('Erro ao carregar histórico de movimentações:', error);
+        setErrorMovimentos(error.message || 'Falha ao carregar histórico de movimentações.');
+        toast.error('Erro ao carregar histórico de movimentações', {
+          description: error.message || 'Verifique sua conexão e tente novamente.'
+        });
+      } finally {
+        setLoadingMovimentos(false);
+      }
+    };
+
+    fetchMovimentos();
+  }, []); // Executar apenas uma vez na montagem do componente
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    const medicamento = medicamentos.find(med => med.id === formData.medicamentoId);
+    setIsSubmitting(true); // Inicia o estado de submissão
+
+    const selectedMedicamentoId = parseInt(formData.medicamentoId); 
+    const medicamento = medicamentos.find(med => med.id === selectedMedicamentoId);
+
     if (!medicamento) {
-      toast.error('Medicamento não encontrado!');
+      toast.error('Medicamento não encontrado! Selecione um medicamento válido.');
+      setIsSubmitting(false);
       return;
     }
 
     const quantidade = parseInt(formData.quantidade);
     
+    if (isNaN(quantidade) || quantidade <= 0) {
+        toast.error('Quantidade inválida! A quantidade deve ser um número positivo.');
+        setIsSubmitting(false);
+        return;
+    }
+
     if (formData.tipo === 'saida' && quantidade > medicamento.quantidade) {
       toast.error('Quantidade insuficiente em estoque!');
+      setIsSubmitting(false);
       return;
     }
 
-    const movimento: Movimento = {
-      id: Date.now().toString(),
-      medicamentoId: formData.medicamentoId,
-      tipo: formData.tipo,
-      quantidade,
-      data: new Date().toISOString(),
-      observacoes: formData.observacoes
-    };
+    try {
+      // 1. Calcular a nova quantidade do medicamento
+      const novaQuantidade = formData.tipo === 'entrada' 
+        ? medicamento.quantidade + quantidade
+        : medicamento.quantidade - quantidade;
 
-    // Atualizar estoque do medicamento
-    const novaQuantidade = formData.tipo === 'entrada' 
-      ? medicamento.quantidade + quantidade
-      : medicamento.quantidade - quantidade;
+      // 2. Criar a movimentação no backend
+      const newMovimento = await MovimentoService.addMovimento({
+        medicamentoId: selectedMedicamentoId, // Enviar o ID numérico
+        tipo: formData.tipo,
+        quantidade,
+        observacoes: formData.observacoes,
+      });
 
-    setMedicamentos(prev => prev.map(med => 
-      med.id === formData.medicamentoId 
-        ? { ...med, quantidade: novaQuantidade }
-        : med
-    ));
+      // 3. Atualizar o medicamento no backend (estoque)
+      const updatedMedicamento = await MedicamentoService.updateMedicamento(selectedMedicamentoId, {
+        ...medicamento, // Manter os dados existentes do medicamento
+        quantidade: novaQuantidade, // Apenas atualiza a quantidade
+      });
 
-    setMovimentos(prev => [movimento, ...prev]);
-    
-    toast.success(`${formData.tipo === 'entrada' ? 'Entrada' : 'Saída'} registrada com sucesso!`);
-    resetForm();
+      // 4. Atualizar o estado do frontend (lista de medicamentos e lista de movimentos)
+      setMedicamentos(prev => prev.map(med => 
+        med.id === updatedMedicamento.id 
+          ? updatedMedicamento // Usa o objeto atualizado retornado pelo backend
+          : med
+      ));
+      setMovimentos(prev => [newMovimento, ...prev]); // Adiciona a nova movimentação ao início da lista
+
+      toast.success(`${formData.tipo === 'entrada' ? 'Entrada' : 'Saída'} registrada com sucesso!`);
+      resetForm();
+
+    } catch (error: any) {
+      console.error('Erro ao registrar movimentação:', error);
+      toast.error('Erro ao registrar movimentação', {
+        description: error.message || 'Verifique sua conexão e tente novamente.'
+      });
+    } finally {
+      setIsSubmitting(false); // Finaliza o estado de submissão
+    }
   };
 
   const resetForm = () => {
@@ -77,8 +155,8 @@ const MovimentacaoEstoque: React.FC<MovimentacaoEstoqueProps> = ({ onBack }) => 
     setShowForm(false);
   };
 
-  const getMedicamentoNome = (medicamentoId: string) => {
-    const medicamento = medicamentos.find(med => med.id === medicamentoId);
+  const getMedicamentoNome = (medicamentoId: number | string) => {
+    const medicamento = medicamentos.find(med => med.id == medicamentoId);
     return medicamento?.nome || 'Medicamento removido';
   };
 
@@ -123,40 +201,11 @@ const MovimentacaoEstoque: React.FC<MovimentacaoEstoqueProps> = ({ onBack }) => 
             </div>
 
             <div className="space-y-4">
-              {movimentos.map((movimento) => (
-                <Card key={movimento.id} className="hover:shadow-lg transition-all duration-200">
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4">
-                        <div className={`p-3 rounded-full ${
-                          movimento.tipo === 'entrada' ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'
-                        }`}>
-                          {movimento.tipo === 'entrada' ? <ArrowDown className="h-5 w-5" /> : <ArrowUp className="h-5 w-5" />}
-                        </div>
-                        <div>
-                          <h3 className="text-lg font-semibold">{getMedicamentoNome(movimento.medicamentoId)}</h3>
-                          <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                            <span>Quantidade: {movimento.quantidade}</span>
-                            <span>•</span>
-                            <span>{new Date(movimento.data).toLocaleDateString('pt-BR')} às {new Date(movimento.data).toLocaleTimeString('pt-BR')}</span>
-                            {movimento.observacoes && (
-                              <>
-                                <span>•</span>
-                                <span>{movimento.observacoes}</span>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                      <Badge variant={movimento.tipo === 'entrada' ? 'secondary' : 'destructive'}>
-                        {movimento.tipo === 'entrada' ? 'Entrada' : 'Saída'}
-                      </Badge>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-
-              {movimentos.length === 0 && (
+              {loadingMovimentos ? (
+                <p className="text-center text-muted-foreground">Carregando histórico de movimentações...</p>
+              ) : errorMovimentos ? (
+                <p className="text-center text-red-500">{errorMovimentos}</p>
+              ) : movimentos.length === 0 ? (
                 <Card className="border-2 border-dashed border-muted-foreground/20">
                   <CardContent className="p-12 text-center">
                     <ArrowRight className="h-12 w-12 text-muted-foreground/50 mx-auto mb-4" />
@@ -168,6 +217,39 @@ const MovimentacaoEstoque: React.FC<MovimentacaoEstoqueProps> = ({ onBack }) => 
                     </p>
                   </CardContent>
                 </Card>
+              ) : (
+                movimentos.map((movimento) => (
+                  <Card key={movimento.id} className="hover:shadow-lg transition-all duration-200">
+                    <CardContent className="p-6">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                          <div className={`p-3 rounded-full ${
+                            movimento.tipo === 'entrada' ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'
+                          }`}>
+                            {movimento.tipo === 'entrada' ? <ArrowDown className="h-5 w-5" /> : <ArrowUp className="h-5 w-5" />}
+                          </div>
+                          <div>
+                            <h3 className="text-lg font-semibold">{getMedicamentoNome(movimento.medicamentoId)}</h3>
+                            <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                              <span>Quantidade: {movimento.quantidade}</span>
+                              <span>•</span>
+                              <span>{new Date(movimento.data).toLocaleDateString('pt-BR')} às {new Date(movimento.data).toLocaleTimeString('pt-BR')}</span>
+                              {movimento.observacoes && (
+                                <>
+                                  <span>•</span>
+                                  <span>{movimento.observacoes}</span>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        <Badge variant={movimento.tipo === 'entrada' ? 'secondary' : 'destructive'}>
+                          {movimento.tipo === 'entrada' ? 'Entrada' : 'Saída'}
+                        </Badge>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))
               )}
             </div>
           </>
@@ -180,20 +262,29 @@ const MovimentacaoEstoque: React.FC<MovimentacaoEstoqueProps> = ({ onBack }) => 
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="medicamentoId">Medicamento</Label>
-                  <select
-                    id="medicamentoId"
-                    value={formData.medicamentoId}
-                    onChange={(e) => setFormData(prev => ({ ...prev, medicamentoId: e.target.value }))}
-                    className="w-full p-2 border border-input rounded-md"
-                    required
-                  >
-                    <option value="">Selecione um medicamento</option>
-                    {medicamentos.map((medicamento) => (
-                      <option key={medicamento.id} value={medicamento.id}>
-                        {medicamento.nome} (Estoque: {medicamento.quantidade})
-                      </option>
-                    ))}
-                  </select>
+                  {loadingMedicamentos ? (
+                    <p>Carregando medicamentos...</p>
+                  ) : errorMedicamentos ? (
+                    <p className="text-red-500">{errorMedicamentos}</p>
+                  ) : medicamentos.length === 0 ? (
+                    <p className="text-muted-foreground">Nenhum medicamento cadastrado. Cadastre um em "Produtos em Estoque" primeiro.</p>
+                  ) : (
+                    <select
+                      id="medicamentoId"
+                      value={formData.medicamentoId}
+                      onChange={(e) => setFormData(prev => ({ ...prev, medicamentoId: e.target.value }))}
+                      className="w-full p-2 border border-input rounded-md"
+                      required
+                      disabled={isSubmitting} // Desabilita durante o envio
+                    >
+                      <option value="">Selecione um medicamento</option>
+                      {medicamentos.map((medicamento) => (
+                        <option key={medicamento.id} value={String(medicamento.id)}> 
+                          {medicamento.nome} (Estoque: {medicamento.quantidade})
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </div>
 
                 <div className="space-y-2">
@@ -204,6 +295,7 @@ const MovimentacaoEstoque: React.FC<MovimentacaoEstoqueProps> = ({ onBack }) => 
                     onChange={(e) => setFormData(prev => ({ ...prev, tipo: e.target.value as 'entrada' | 'saida' }))}
                     className="w-full p-2 border border-input rounded-md"
                     required
+                    disabled={isSubmitting} // Desabilita durante o envio
                   >
                     <option value="entrada">Entrada</option>
                     <option value="saida">Saída</option>
@@ -219,6 +311,7 @@ const MovimentacaoEstoque: React.FC<MovimentacaoEstoqueProps> = ({ onBack }) => 
                     value={formData.quantidade}
                     onChange={(e) => setFormData(prev => ({ ...prev, quantidade: e.target.value }))}
                     required
+                    disabled={isSubmitting} // Desabilita durante o envio
                   />
                 </div>
 
@@ -229,14 +322,15 @@ const MovimentacaoEstoque: React.FC<MovimentacaoEstoqueProps> = ({ onBack }) => 
                     value={formData.observacoes}
                     onChange={(e) => setFormData(prev => ({ ...prev, observacoes: e.target.value }))}
                     placeholder="Motivo, fornecedor, etc."
+                    disabled={isSubmitting} // Desabilita durante o envio
                   />
                 </div>
 
                 <div className="flex gap-4">
-                  <Button type="submit" className="farmatech-blue hover:farmatech-blue-light text-white">
-                    Registrar
+                  <Button type="submit" className="farmatech-blue hover:farmatech-blue-light text-white" disabled={isSubmitting}>
+                    {isSubmitting ? 'Registrando...' : 'Registrar'}
                   </Button>
-                  <Button type="button" variant="outline" onClick={resetForm}>
+                  <Button type="button" variant="outline" onClick={resetForm} disabled={isSubmitting}>
                     Cancelar
                   </Button>
                 </div>
