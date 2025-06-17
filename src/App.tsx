@@ -1,7 +1,9 @@
+
 // src/App.tsx
 import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { Toaster } from 'sonner';
+import LoadingScreen from './components/LoadingScreen';
 
 // Lazy Loading para os componentes de rota
 const Login = lazy(() => import('./components/Login'));
@@ -102,6 +104,16 @@ enum AppRoute {
 function App() {
   const { isAuthenticated, user } = useAuth();
   const [currentRoute, setCurrentRoute] = useState<AppRoute>(AppRoute.LOGIN);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Loading screen com duração de 3 segundos
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 3000);
+
+    return () => clearTimeout(timer);
+  }, []);
 
   // Redireciona para o dashboard se já estiver autenticado, ou para login caso contrário
   useEffect(() => {
@@ -128,7 +140,7 @@ function App() {
             onAnaliseMovimentacoesClick={() => setCurrentRoute(AppRoute.ANALISE_MOVIMENTACOES)}
             onMedicamentosAVencerClick={() => setCurrentRoute(AppRoute.MEDICAMENTOS_A_VENCER)}
             onRegistroVendasClick={() => setCurrentRoute(AppRoute.REGISTRO_VENDAS)}
-            onAnaliseIaClick={() => setCurrentRoute(AppRoute.ANALISE_IA)} // NOVO: Passa a função para a nova rota
+            onAnaliseIaClick={() => setCurrentRoute(AppRoute.ANALISE_IA)}
           />
         );
       case AppRoute.ESTOQUE_PRODUTOS:
@@ -143,12 +155,17 @@ function App() {
         return <MedicamentosAVencer onBack={() => setCurrentRoute(AppRoute.DASHBOARD)} />;
       case AppRoute.REGISTRO_VENDAS:
         return <RegistroVendas onBack={() => setCurrentRoute(AppRoute.DASHBOARD)} />;
-      case AppRoute.ANALISE_IA: // NOVO: Renderiza o componente AnaliseIA
+      case AppRoute.ANALISE_IA:
         return <AnaliseIA onBack={() => setCurrentRoute(AppRoute.DASHBOARD)} />;
       default:
         return <Login onShowRegister={() => setCurrentRoute(AppRoute.CADASTRO)} />;
     }
   };
+
+  // Mostra a tela de loading por 3 segundos
+  if (isLoading) {
+    return <LoadingScreen />;
+  }
 
   return (
     <div className="App w-full h-full min-h-screen overflow-x-hidden"> 
