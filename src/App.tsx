@@ -85,19 +85,6 @@ const tailwindConfig = {
   },
 };
 
-// Carrega e configura o Tailwind CSS via CDN (apenas para ambiente Canvas)
-if (typeof window !== 'undefined') {
-  (window as any).tailwind = tailwindConfig;
-  const script = document.createElement('script');
-  script.src = 'https://cdn.tailwindcss.com';
-  script.onload = () => {
-    if ((window as any).tailwind) {
-      (window as any).tailwind.config = (window as any).tailwind;
-    }
-  };
-  document.head.appendChild(script);
-}
-
 // Enum para gerenciar as rotas da aplicação
 enum AppRoute {
   LOGIN = 'login',
@@ -129,7 +116,7 @@ function App() {
   const renderRoute = () => {
     switch (currentRoute) {
       case AppRoute.LOGIN:
-        return <Login onRegisterClick={() => setCurrentRoute(AppRoute.CADASTRO)} onLoginSuccess={() => setCurrentRoute(AppRoute.DASHBOARD)} />;
+        return <Login onShowRegister={() => setCurrentRoute(AppRoute.CADASTRO)} />;
       case AppRoute.CADASTRO:
         return <Cadastro onBackToLogin={() => setCurrentRoute(AppRoute.LOGIN)} />;
       case AppRoute.DASHBOARD:
@@ -159,7 +146,7 @@ function App() {
       case AppRoute.ANALISE_IA: // NOVO: Renderiza o componente AnaliseIA
         return <AnaliseIA onBack={() => setCurrentRoute(AppRoute.DASHBOARD)} />;
       default:
-        return <Login onRegisterClick={() => setCurrentRoute(AppRoute.CADASTRO)} onLoginSuccess={() => setCurrentRoute(AppRoute.DASHBOARD)} />;
+        return <Login onShowRegister={() => setCurrentRoute(AppRoute.CADASTRO)} />;
     }
   };
 

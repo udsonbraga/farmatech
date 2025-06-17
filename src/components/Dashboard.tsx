@@ -1,4 +1,3 @@
-
 // src/components/Dashboard.tsx
 import React, { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
@@ -6,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowRight, Package, AlertTriangle, LineChart, Clock, ShoppingCart, Sparkles } from 'lucide-react'; 
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import FarmaTechLogo from '@/components/FarmaTechLogo';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -54,16 +54,14 @@ const Dashboard: React.FC<DashboardProps> = ({
     <div className="min-h-screen bg-gradient-to-br from-farmatech-teal/10 to-farmatech-blue/10 flex flex-col">
       {/* Header */}
       <div className="farmatech-blue text-white p-6 rounded-b-3xl shadow-lg flex justify-between items-center flex-shrink-0">
-        <div className="flex items-center gap-2">
-          <div className="p-2 rounded-full bg-white/20">
-            <ArrowRight className="h-6 w-6" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold">FarmaTech</h1>
-            {user && (
+        <div className="flex items-center gap-4">
+          <FarmaTechLogo size="md" showText={true} />
+          {user && (
+            <div className="ml-4">
               <p className="text-sm text-white/80">Olá, {user.username || user.email}!</p>
-            )}
-          </div>
+              <p className="text-xs text-white/60">Farmácia ID: {user.farmacia_id}</p>
+            </div>
+          )}
         </div>
         <Button onClick={handleLogout} variant="ghost" className="text-white hover:bg-white/20">
           Sair

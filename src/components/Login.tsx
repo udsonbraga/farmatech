@@ -1,6 +1,4 @@
 
-// src/components/Login.tsx (Exemplo de ajuste)
-
 import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -8,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
+import FarmaTechLogo from '@/components/FarmaTechLogo';
 
 interface LoginProps {
   onShowRegister: () => void;
@@ -17,11 +16,11 @@ const Login: React.FC<LoginProps> = ({ onShowRegister }) => {
   const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false); // NOVO: Estado para controlar o envio
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true); // Ativa o estado de envio
+    setIsSubmitting(true);
     try {
       const result = await login({ email, senha });
       if (result.success) {
@@ -37,7 +36,7 @@ const Login: React.FC<LoginProps> = ({ onShowRegister }) => {
         description: 'Não foi possível conectar ao servidor. Verifique sua rede.'
       });
     } finally {
-      setIsSubmitting(false); // Desativa o estado de envio
+      setIsSubmitting(false);
     }
   };
 
@@ -45,7 +44,9 @@ const Login: React.FC<LoginProps> = ({ onShowRegister }) => {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-farmatech-teal/10 to-farmatech-blue/10 p-4">
       <Card className="w-full max-w-md shadow-lg rounded-xl">
         <CardHeader className="text-center">
-          <CardTitle className="text-3xl font-bold text-farmatech-blue">FarmaTech</CardTitle>
+          <div className="flex justify-center mb-4">
+            <FarmaTechLogo size="lg" showText={true} />
+          </div>
           <p className="text-muted-foreground">Acesse sua conta</p>
         </CardHeader>
         <CardContent>
@@ -59,7 +60,7 @@ const Login: React.FC<LoginProps> = ({ onShowRegister }) => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                disabled={isSubmitting} // Desabilita input durante o envio
+                disabled={isSubmitting}
               />
             </div>
             <div className="space-y-2">
@@ -71,15 +72,15 @@ const Login: React.FC<LoginProps> = ({ onShowRegister }) => {
                 value={senha}
                 onChange={(e) => setSenha(e.target.value)}
                 required
-                disabled={isSubmitting} // Desabilita input durante o envio
+                disabled={isSubmitting}
               />
             </div>
             <Button 
               type="submit" 
               className="w-full farmatech-blue hover:farmatech-blue-light"
-              disabled={isSubmitting} // Desabilita o botão durante o envio
+              disabled={isSubmitting}
             >
-              {isSubmitting ? 'Entrando...' : 'Entrar'} {/* Muda o texto do botão */}
+              {isSubmitting ? 'Entrando...' : 'Entrar'}
             </Button>
             <div className="text-center text-sm text-muted-foreground">
               Não tem uma conta?{' '}
