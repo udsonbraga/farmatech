@@ -16,7 +16,6 @@ const RegistroVendas = lazy(() => import('./components/RegistroVendas'));
 // NOVO: Lazy Load do componente AnaliseIA
 const AnaliseIA = lazy(() => import('./components/AnaliseIA'));
 
-
 // Definição do tema Tailwind
 const tailwindConfig = {
   theme: {
@@ -114,7 +113,7 @@ enum AppRoute {
 }
 
 function App() {
-  const { isAuthenticated, currentUser } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const [currentRoute, setCurrentRoute] = useState<AppRoute>(AppRoute.LOGIN);
 
   // Redireciona para o dashboard se já estiver autenticado, ou para login caso contrário
@@ -124,7 +123,7 @@ function App() {
     } else {
       setCurrentRoute(AppRoute.LOGIN);
     }
-  }, [isAuthenticated, currentUser]);
+  }, [isAuthenticated, user]);
 
   // Função para renderizar o componente com base na rota atual
   const renderRoute = () => {

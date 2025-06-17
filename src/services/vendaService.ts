@@ -1,3 +1,4 @@
+
 // src/services/vendaService.ts
 
 import { VendaRegistro } from '@/types';
@@ -89,7 +90,7 @@ export class VendaService {
                 if (newAccessToken) {
                     const retryResponse = await fetch(`${VendaService.API_BASE_URL}/vendas/`, {
                         method: 'POST',
-                        headers: MovimentoService.getAuthHeaders(), // Corrigido para MovimentoService.getAuthHeaders
+                        headers: VendaService.getAuthHeaders(),
                         body: JSON.stringify({
                             itens: vendaData.itens.map(item => ({
                                 medicamento: item.medicamento,

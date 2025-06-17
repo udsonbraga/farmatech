@@ -1,3 +1,4 @@
+
 // src/components/Login.tsx (Exemplo de ajuste)
 
 import React, { useState } from 'react';
@@ -9,11 +10,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
 
 interface LoginProps {
-  onRegisterClick: () => void;
-  onLoginSuccess: () => void;
+  onShowRegister: () => void;
 }
 
-const Login: React.FC<LoginProps> = ({ onRegisterClick, onLoginSuccess }) => {
+const Login: React.FC<LoginProps> = ({ onShowRegister }) => {
   const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
@@ -26,10 +26,9 @@ const Login: React.FC<LoginProps> = ({ onRegisterClick, onLoginSuccess }) => {
       const result = await login({ email, senha });
       if (result.success) {
         toast.success('Login realizado com sucesso!');
-        onLoginSuccess();
       } else {
         toast.error('Erro no login', {
-          description: result.error || 'Credenciais inválidas. Tente novamente.'
+          description: result.message || 'Credenciais inválidas. Tente novamente.'
         });
       }
     } catch (error: any) {
@@ -84,7 +83,7 @@ const Login: React.FC<LoginProps> = ({ onRegisterClick, onLoginSuccess }) => {
             </Button>
             <div className="text-center text-sm text-muted-foreground">
               Não tem uma conta?{' '}
-              <Button type="button" variant="link" onClick={onRegisterClick} disabled={isSubmitting}>
+              <Button type="button" variant="link" onClick={onShowRegister} disabled={isSubmitting}>
                 Cadastre-se
               </Button>
             </div>

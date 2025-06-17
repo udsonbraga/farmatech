@@ -51,16 +51,17 @@ const AppContent = () => {
     // Se estiver autenticado, mostrar as telas internas
     switch (currentScreen) {
       case 'dashboard':
-        return user ? (
+        return (
           <Dashboard
-            user={user}
-            onLogout={handleLogout}
-            onNavigateToAlertas={() => setCurrentScreen('alertas')}
-            onNavigateToEstoque={() => setCurrentScreen('estoque')}
-            onNavigateToMovimentacao={() => setCurrentScreen('movimentacao')}
-            onNavigateToVendas={() => setCurrentScreen('vendas')}
+            onProdutosEstoqueClick={() => setCurrentScreen('estoque')}
+            onMovimentacaoEstoqueClick={() => setCurrentScreen('movimentacao')}
+            onAlertasEstoqueClick={() => setCurrentScreen('alertas')}
+            onAnaliseMovimentacoesClick={() => setCurrentScreen('dashboard')}
+            onMedicamentosAVencerClick={() => setCurrentScreen('dashboard')}
+            onRegistroVendasClick={() => setCurrentScreen('vendas')}
+            onAnaliseIaClick={() => setCurrentScreen('dashboard')}
           />
-        ) : null;
+        );
       case 'alertas':
         return (
           <AlertasEstoque

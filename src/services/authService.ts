@@ -1,9 +1,23 @@
+
 // src/services/authService.ts
 import { User } from '@/types';
 
 // Opcional: Adicione a biblioteca jwt-decode se quiser decodificar o token no frontend
 // Importar jwt_decode - você precisará instalar esta biblioteca: npm install jwt-decode
 // import { jwtDecode } from 'jwt-decode';
+
+export interface LoginCredentials {
+  email: string;
+  senha: string;
+}
+
+export interface UserRegistration {
+  email: string;
+  senha: string;
+  telefone?: string;
+  farmaciaName: string;
+  responsavelName: string;
+}
 
 export class AuthService {
   private static readonly API_BASE_URL = 'http://127.0.0.1:8000/api';
@@ -54,7 +68,7 @@ export class AuthService {
 
   // Função para registrar um novo usuário e fazer login (obtendo JWTs)
   // AJUSTADO: Mapeando os campos do frontend para o que o backend espera (senha, farmaciaName, responsavelName)
-  static async register(userData: { email: string, senha: string, telefone?: string, farmaciaName: string, responsavelName: string }): Promise<{ success: boolean, user?: User, error?: string }> {
+  static async register(userData: UserRegistration): Promise<{ success: boolean, user?: User, message: string }> {
     try {
       // O payload deve corresponder EXATAMENTE ao que seu RegisterSerializer no Django espera
       const payload = {
@@ -79,19 +93,19 @@ export class AuthService {
 
       if (response.ok && data.success) {
         AuthService.setTokens(data.access, data.refresh);
-        return { success: true, user: { ...data.user, access: data.access, refresh: data.refresh } };
+        return { success: true, user: { ...data.user, access: data.access, refresh: data.refresh }, message: data.message || 'Registro realizado com sucesso!' };
       } else {
         const errorMessage = data.message || JSON.stringify(data) || 'Erro no registro.';
-        return { success: false, error: errorMessage };
+        return { success: false, message: errorMessage };
       }
     } catch (error: any) {
       console.error('Erro ao registrar:', error);
-      return { success: false, error: error.message || 'Erro de rede.' };
+      return { success: false, message: error.message || 'Erro de rede.' };
     }
   }
 
   // Função para fazer login e obter JWTs
-  static async login(credentials: { email: string, senha: string }): Promise<{ success: boolean, user?: User, error?: string }> {
+  static async login(credentials: LoginCredentials): Promise<{ success: boolean, user?: User, message: string }> {
     try {
       const payload = {
         username: credentials.email, // Backend espera 'username' para o email
@@ -110,14 +124,14 @@ export class AuthService {
 
       if (response.ok && data.success) {
         AuthService.setTokens(data.access, data.refresh);
-        return { success: true, user: { ...data.user, access: data.access, refresh: data.refresh } };
+        return { success: true, user: { ...data.user, access: data.access, refresh: data.refresh }, message: data.message || 'Login realizado com sucesso!' };
       } else {
         const errorMessage = data.message || JSON.stringify(data) || 'Credenciais inválidas.';
-        return { success: false, error: errorMessage };
+        return { success: false, message: errorMessage };
       }
     } catch (error: any) {
       console.error('Erro ao fazer login:', error);
-      return { success: false, error: error.message || 'Erro de rede.' };
+      return { success: false, message: error.message || 'Erro de rede.' };
     }
   }
 

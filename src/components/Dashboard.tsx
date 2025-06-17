@@ -1,3 +1,4 @@
+
 // src/components/Dashboard.tsx
 import React, { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
@@ -36,7 +37,7 @@ const Dashboard: React.FC<DashboardProps> = ({
   onRegistroVendasClick,
   onAnaliseIaClick,
 }) => {
-  const { currentUser, logout } = useAuth();
+  const { user, logout } = useAuth();
   const [showConfirmLogout, setShowConfirmLogout] = useState(false);
 
   const confirmLogout = () => {
@@ -59,8 +60,8 @@ const Dashboard: React.FC<DashboardProps> = ({
           </div>
           <div>
             <h1 className="text-2xl font-bold">FarmaTech</h1>
-            {currentUser && (
-              <p className="text-sm text-white/80">Olá, {currentUser.username || currentUser.email}!</p>
+            {user && (
+              <p className="text-sm text-white/80">Olá, {user.username || user.email}!</p>
             )}
           </div>
         </div>
@@ -74,9 +75,9 @@ const Dashboard: React.FC<DashboardProps> = ({
         <h2 className="text-3xl font-bold mb-6 text-center text-foreground">
           Painel Principal
         </h2>
-        {currentUser && (
+        {user && (
           <p className="text-lg text-center text-muted-foreground mb-8">
-            Sua farmácia: ID {currentUser.farmacia_id}
+            Sua farmácia: ID {user.farmacia_id}
           </p>
         )}
 
