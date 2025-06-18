@@ -1,6 +1,6 @@
 // src/components/AnaliseMovimentacoes.tsx
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, LineChart, Filter, Sparkles } from 'lucide-react'; // NOVO: Adicionado Sparkles icon
 import { Movimento, Medicamento, VendaRegistro, AiAnalysisRequest, AiAnalysisResult } from '@/types'; // NOVO: Importar AiAnalysisRequest, AiAnalysisResult
@@ -153,6 +153,34 @@ const AnaliseMovimentacoes: React.FC<AnaliseMovimentacoesProps> = ({ onBack }) =
     }
   };
 
+  // Preparar dados para o VendasBarChart
+  const vendasChartData = useMemo(() => {
+    const monthlyVendas = new Map<string, { vendas: number; quantidade: number }>();
+
+    filteredVendas.forEach(venda => {
+      const date = new Date(venda.data);
+      const monthYear = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}`;
+      
+      if (!monthlyVendas.has(monthYear)) {
+        monthlyVendas.set(monthYear, { vendas: 0, quantidade: 0 });
+      }
+      
+      const data = monthlyVendas.get(monthYear)!;
+      data.vendas += venda.total;
+      data.quantidade += venda.itens.reduce((sum, item) => sum + item.quantidade, 0);
+    });
+
+    return Array.from(monthlyVendas.entries())
+      .map(([monthYear, data]) => {
+        const [year, month] = monthYear.split('-');
+        const monthName = new Date(Number(year), Number(month) - 1, 1).toLocaleString('pt-BR', { month: 'short' });
+        return {
+          periodo: `${monthName} ${year}`,
+          ...data
+        };
+      })
+      .sort((a, b) => a.periodo.localeCompare(b.periodo));
+  }, [filteredVendas]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-farmatech-blue/5 to-farmatech-teal/5">
@@ -264,7 +292,8 @@ const AnaliseMovimentacoes: React.FC<AnaliseMovimentacoesProps> = ({ onBack }) =
                 medicamentos={medicamentos}
               />
               <VendasBarChart
-                vendas={filteredVendas}
+                data={vendasChartData}
+                periodoTexto="Vendas por Período"
               />
               <EstoquePieChart
                 medicamentos={medicamentos}

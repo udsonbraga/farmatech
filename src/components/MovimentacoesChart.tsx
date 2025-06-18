@@ -72,25 +72,34 @@ const MovimentacoesChart: React.FC<MovimentacoesChartProps> = ({ movimentos }) =
     <div className="space-y-6">
       {/* Filtros */}
       <MovimentacoesFiltros
-        selectedMonth={selectedMonth}
-        selectedYear={selectedYear}
-        onMonthChange={setSelectedMonth}
-        onYearChange={setSelectedYear}
+        medicamentos={medicamentos}
+        filterStartDate=""
+        setFilterStartDate={() => {}}
+        filterEndDate=""
+        setFilterEndDate={() => {}}
+        filterMedicamentoId=""
+        setFilterMedicamentoId={() => {}}
+        filterTipo=""
+        setFilterTipo={() => {}}
+        filterMonth={selectedMonth}
+        setFilterMonth={setSelectedMonth}
+        filterYear={selectedYear}
+        setFilterYear={setSelectedYear}
       />
 
       {/* Resumo das Movimentações */}
       <SummaryCards
         totalEntradas={totalEntradas}
         totalSaidas={totalSaidas}
-        saldoTotal={saldoTotal}
-        totalVendasPeriodo={totalVendasPeriodo}
+        saldoGeral={saldoTotal}
+        vendasPeriodo={totalVendasPeriodo}
       />
 
       {/* Grid de Gráficos */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <MovimentacoesBarChart 
-          data={movimentacoesData} 
-          periodoTexto={getPeriodoTexto()} 
+          movimentos={movimentosFiltrados}
+          medicamentos={medicamentos}
         />
         
         <VendasBarChart 
@@ -98,9 +107,9 @@ const MovimentacoesChart: React.FC<MovimentacoesChartProps> = ({ movimentos }) =
           periodoTexto={getPeriodoTexto()} 
         />
         
-        <EstoquePieChart data={alertasData} />
+        <EstoquePieChart medicamentos={medicamentos} />
         
-        <SaldoLineChart data={movimentacoesData} />
+        <SaldoLineChart movimentos={movimentosFiltrados} />
       </div>
     </div>
   );
