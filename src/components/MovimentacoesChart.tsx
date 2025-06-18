@@ -68,6 +68,16 @@ const MovimentacoesChart: React.FC<MovimentacoesChartProps> = ({ movimentos }) =
     }
   };
 
+  // Função para lidar com mudança de mês
+  const handleMonthChange = (month: number | "") => {
+    setSelectedMonth(typeof month === "string" ? 0 : month);
+  };
+
+  // Função para lidar com mudança de ano
+  const handleYearChange = (year: number | "") => {
+    setSelectedYear(typeof year === "string" ? new Date().getFullYear() : year);
+  };
+
   return (
     <div className="space-y-6">
       {/* Filtros */}
@@ -82,9 +92,9 @@ const MovimentacoesChart: React.FC<MovimentacoesChartProps> = ({ movimentos }) =
         filterTipo=""
         setFilterTipo={() => {}}
         filterMonth={selectedMonth}
-        setFilterMonth={setSelectedMonth}
+        setFilterMonth={handleMonthChange}
         filterYear={selectedYear}
-        setFilterYear={setSelectedYear}
+        setFilterYear={handleYearChange}
       />
 
       {/* Resumo das Movimentações */}

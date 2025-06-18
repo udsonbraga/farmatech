@@ -2,10 +2,6 @@
 // src/services/authService.ts
 import { User } from '@/types';
 
-// Opcional: Adicione a biblioteca jwt-decode se quiser decodificar o token no frontend
-// Importar jwt_decode - você precisará instalar esta biblioteca: npm install jwt-decode
-// import { jwtDecode } from 'jwt-decode';
-
 export interface LoginCredentials {
   email: string;
   senha: string;
@@ -52,34 +48,30 @@ export class AuthService {
   }
 
   // Função para simular o "usuário atual" (baseado nos tokens, não mais em um objeto User completo)
-  // Para uma implementação mais completa, você decodificaria o token aqui.
   static getCurrentUser(): User | null {
     const accessToken = AuthService.getAccessToken();
     if (accessToken) {
-      // Em uma aplicação real, você decodificaria o accessToken aqui para obter
-      // id, email, username e farmacia_id do payload.
-      // Ex: const decodedToken = jwtDecode(accessToken);
-      // return { id: decodedToken.user_id, email: decodedToken.email, ... };
-      // Por enquanto, apenas retornamos um objeto User mínimo se o token existe.
-      return { id: 0, email: '', username: '', access: accessToken }; // Valores placeholder
+      return { id: 0, email: '', username: '', access: accessToken };
     }
     return null;
   }
 
   // Função para registrar um novo usuário e fazer login (obtendo JWTs)
-  // AJUSTADO: Mapeando os campos do frontend para o que o backend espera (senha, farmaciaName, responsavelName)
   static async register(userData: UserRegistration): Promise<{ success: boolean, user?: User, message: string }> {
+    console.log('Iniciando registro com dados:', userData);
+    
     try {
-      // O payload deve corresponder EXATAMENTE ao que seu RegisterSerializer no Django espera
       const payload = {
-        username: userData.email, // Assume que o username do Django é o email
-        password: userData.senha, // Mapeando a senha do formData para 'password'
-        email: userData.email, // Incluindo email, caso o serializer precise
+        username: userData.email,
+        password: userData.senha,
+        email: userData.email,
         telefone: userData.telefone,
-        farmaciaName: userData.farmaciaName, // Este campo é o que o backend está reclamando
-        responsavelName: userData.responsavelName, // Este campo é o que o backend está reclamando
-        senha: userData.senha, // INCLUÍDO NOVAMENTE: Se o seu serializer espera 'senha' diretamente para validação
+        farmaciaName: userData.farmaciaName,
+        responsavelName: userData.responsavelName,
+        senha: userData.senha,
       };
+
+      console.log('Enviando payload para registro:', payload);
 
       const response = await fetch(`${AuthService.API_BASE_URL}/register/`, {
         method: 'POST',
@@ -89,49 +81,131 @@ export class AuthService {
         body: JSON.stringify(payload),
       });
 
-      const data = await response.json();
+      console.log('Response status:', response.status);
+      console.log('Response ok:', response.ok);
 
-      if (response.ok && data.success) {
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Erro na resposta do servidor:', errorText);
+        
+        try {
+          const errorData = JSON.parse(errorText);
+          return { 
+            success: false, 
+            message: errorData.message || 'Erro no servidor. Verifique os dados e tente novamente.' 
+          };
+        } catch {
+          return { 
+            success: false, 
+            message: `Erro do servidor (${response.status}): ${errorText || 'Erro desconhecido'}` 
+          };
+        }
+      }
+
+      const data = await response.json();
+      console.log('Dados recebidos do servidor:', data);
+
+      if (data.success) {
         AuthService.setTokens(data.access, data.refresh);
-        return { success: true, user: { ...data.user, access: data.access, refresh: data.refresh }, message: data.message || 'Registro realizado com sucesso!' };
+        return { 
+          success: true, 
+          user: { ...data.user, access: data.access, refresh: data.refresh }, 
+          message: data.message || 'Registro realizado com sucesso!' 
+        };
       } else {
-        const errorMessage = data.message || JSON.stringify(data) || 'Erro no registro.';
-        return { success: false, message: errorMessage };
+        return { 
+          success: false, 
+          message: data.message || 'Erro no registro.' 
+        };
       }
     } catch (error: any) {
-      console.error('Erro ao registrar:', error);
-      return { success: false, message: error.message || 'Erro de rede.' };
+      console.error('Erro de rede ou conexão:', error);
+      
+      if (error.name === 'TypeError' && error.message === 'Failed to fetch') {
+        return { 
+          success: false, 
+          message: 'Não foi possível conectar ao servidor. Verifique se o backend Django está rodando em http://127.0.0.1:8000' 
+        };
+      }
+      
+      return { 
+        success: false, 
+        message: error.message || 'Erro de conexão. Verifique sua internet e tente novamente.' 
+      };
     }
   }
 
   // Função para fazer login e obter JWTs
   static async login(credentials: LoginCredentials): Promise<{ success: boolean, user?: User, message: string }> {
+    console.log('Iniciando login com email:', credentials.email);
+    
     try {
       const payload = {
-        username: credentials.email, // Backend espera 'username' para o email
-        password: credentials.senha, // Backend espera 'password' para a senha
+        username: credentials.email,
+        password: credentials.senha,
       };
+
+      console.log('Enviando payload para login:', { username: payload.username, password: '[HIDDEN]' });
 
       const response = await fetch(`${AuthService.API_BASE_URL}/login/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(payload), // Envia o payload com 'username' e 'password'
+        body: JSON.stringify(payload),
       });
 
-      const data = await response.json();
+      console.log('Response status:', response.status);
+      console.log('Response ok:', response.ok);
 
-      if (response.ok && data.success) {
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Erro na resposta do servidor:', errorText);
+        
+        try {
+          const errorData = JSON.parse(errorText);
+          return { 
+            success: false, 
+            message: errorData.message || 'Credenciais inválidas.' 
+          };
+        } catch {
+          return { 
+            success: false, 
+            message: `Erro do servidor (${response.status}): ${errorText || 'Erro desconhecido'}` 
+          };
+        }
+      }
+
+      const data = await response.json();
+      console.log('Dados recebidos do servidor:', data);
+
+      if (data.success) {
         AuthService.setTokens(data.access, data.refresh);
-        return { success: true, user: { ...data.user, access: data.access, refresh: data.refresh }, message: data.message || 'Login realizado com sucesso!' };
+        return { 
+          success: true, 
+          user: { ...data.user, access: data.access, refresh: data.refresh }, 
+          message: data.message || 'Login realizado com sucesso!' 
+        };
       } else {
-        const errorMessage = data.message || JSON.stringify(data) || 'Credenciais inválidas.';
-        return { success: false, message: errorMessage };
+        return { 
+          success: false, 
+          message: data.message || 'Credenciais inválidas.' 
+        };
       }
     } catch (error: any) {
-      console.error('Erro ao fazer login:', error);
-      return { success: false, message: error.message || 'Erro de rede.' };
+      console.error('Erro de rede ou conexão:', error);
+      
+      if (error.name === 'TypeError' && error.message === 'Failed to fetch') {
+        return { 
+          success: false, 
+          message: 'Não foi possível conectar ao servidor. Verifique se o backend Django está rodando em http://127.0.0.1:8000' 
+        };
+      }
+      
+      return { 
+        success: false, 
+        message: error.message || 'Erro de conexão. Verifique sua internet e tente novamente.' 
+      };
     }
   }
 
