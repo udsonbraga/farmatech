@@ -1,7 +1,7 @@
 # docker-compose.yml
 # Localização: farmatech/docker-compose.yml
 
-version: '3.8'
+version: '3.8' # Você pode remover esta linha, pois o Docker Compose v2 a ignora.
 
 services:
   # Serviço de Banco de Dados PostgreSQL
@@ -9,13 +9,13 @@ services:
     image: postgres:13-alpine # Imagem oficial do PostgreSQL
     restart: always # Reinicia o contêiner se ele cair
     environment:
-      POSTGRES_DB: farmatech_db    # Nome do banco de dados
-      POSTGRES_USER: user          # Usuário do banco de dados
-      POSTGRES_PASSWORD: password  # Senha do banco de dados (MUDE PARA PRODUÇÃO!)
+      POSTGRES_DB: farmatech_db
+      POSTGRES_USER: postgres    # Usuário do banco de dados (ajustado para 'postgres')
+      POSTGRES_PASSWORD: postgres  # Senha do banco de dados (ajustado para 'postgres')
     volumes:
       - db_data:/var/lib/postgresql/data # Volume para persistir os dados do banco
     healthcheck: # Verifica se o banco de dados está pronto
-      test: ["CMD-SHELL", "pg_isready -U user -d farmatech_db"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d farmatech_db"] # Ajustado o usuário para 'postgres'
       interval: 5s
       timeout: 5s
       retries: 5
@@ -35,12 +35,13 @@ services:
       - ./farmatech_backend/media:/app/farmatech_backend/media # Opcional: para persistir uploads de mídia
       - ./farmatech_backend/staticfiles:/app/farmatech_backend/staticfiles # Opcional: para coletar estáticos
     environment:
-      # Variáveis de ambiente para o Django (IMPORTANTE: MUDAR PARA PRODUÇÃO)
-      DATABASE_URL: postgres://user:password@db:5432/farmatech_db # Conecta ao serviço 'db' do Docker Compose
-      SECRET_KEY: "SUA_SECRET_KEY_GERADA_AQUI" # Use a chave que você gerou!
-      DEBUG: "False" # MUDE PARA FALSE EM PRODUÇÃO!
-      ALLOWED_HOSTS: "*" # Mude para o IP público ou domínio da sua instância EC2 em produção! Ex: "seu.dominio.com,seu_ip_publico"
-      GEMINI_API_KEY: "SUA_CHAVE_API_GEMINI_AQUI" # Insira sua chave Gemini API real
+      # Variáveis de ambiente para o Django (IMPORTANTE: MUDAR PARA PRODUÇÃO!)
+      # A URL de conexão ao DB agora usa 'postgres:postgres' para coincidir com o serviço 'db'
+      DATABASE_URL: postgres://postgres:postgres@db:5432/farmatech_db
+      SECRET_KEY: "3nhr)_b#o*wljm9=7-&c8o9syst8)s_+&)n4*3o6maoppt!--4" # Sua SECRET_KEY gerada
+      DEBUG: "False" # Definido como False para ambiente de produção
+      ALLOWED_HOSTS: "56.124.103.127" # Seu IP público da EC2
+      GEMINI_API_KEY: "AIzaSyA0q1moqQ_6j6BPvEricBOX-9uaYRofUEo" # Sua chave Gemini API real
     expose: # Expõe a porta 8000 internamente para o Nginx do frontend
       - "8000"
     depends_on:
@@ -50,8 +51,8 @@ services:
   # Serviço de Frontend React (Nginx)
   frontend:
     build:
-      context: ./ # <<<<<< CONTEXTO ALTERADO: Aponta para a raiz do projeto (onde está o frontend)
-      dockerfile: Dockerfile # <<<<<< Dockerfile na raiz do projeto
+      context: ./ # Contexto da build para o Dockerfile do frontend na raiz do projeto
+      dockerfile: Dockerfile # Dockerfile do frontend na raiz do projeto
     ports:
       - "80:80" # Mapeia a porta 80 do contêiner para a porta 80 da instância EC2
     depends_on:
@@ -59,4 +60,67 @@ services:
 
 # Volumes para persistência de dados
 volumes:
-  db_data:
+  db_data: # Volume para os dados do PostgreSQL
+# docker-compose.yml
+# Localização: farmatech/docker-compose.yml
+
+version: '3.8' # Você pode remover esta linha, pois o Docker Compose v2 a ignora.
+
+services:
+  # Serviço de Banco de Dados PostgreSQL
+  db:
+    image: postgres:13-alpine # Imagem oficial do PostgreSQL
+    restart: always # Reinicia o contêiner se ele cair
+    environment:
+      POSTGRES_DB: farmatech_db
+      POSTGRES_USER: postgres    # Usuário do banco de dados (ajustado para 'postgres')
+      POSTGRES_PASSWORD: postgres  # Senha do banco de dados (ajustado para 'postgres')
+    volumes:
+      - db_data:/var/lib/postgresql/data # Volume para persistir os dados do banco
+    healthcheck: # Verifica se o banco de dados está pronto
+      test: ["CMD-SHELL", "pg_isready -U postgres -d farmatech_db"] # Ajustado o usuário para 'postgres'
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    expose: # Expõe a porta internamente para outros serviços Docker
+      - "5432"
+
+  # Serviço de Backend Django
+  backend:
+    build:
+      context: ./farmatech_backend # Caminho para a pasta do seu backend
+      dockerfile: Dockerfile       # Nome do Dockerfile dentro da pasta do backend
+    command: > # Comando para iniciar o servidor Gunicorn
+      sh -c "python manage.py collectstatic --noinput &&
+             python manage.py migrate &&
+             gunicorn farmatech_backend.wsgi:application --bind 0.0.0.0:8000"
+    volumes:
+      - ./farmatech_backend/media:/app/farmatech_backend/media # Opcional: para persistir uploads de mídia
+      - ./farmatech_backend/staticfiles:/app/farmatech_backend/staticfiles # Opcional: para coletar estáticos
+    environment:
+      # Variáveis de ambiente para o Django (IMPORTANTE: MUDAR PARA PRODUÇÃO!)
+      # A URL de conexão ao DB agora usa 'postgres:postgres' para coincidir com o serviço 'db'
+      DATABASE_URL: postgres://postgres:postgres@db:5432/farmatech_db
+      SECRET_KEY: "3nhr)_b#o*wljm9=7-&c8o9syst8)s_+&)n4*3o6maoppt!--4" # Sua SECRET_KEY gerada
+      DEBUG: "False" # Definido como False para ambiente de produção
+      ALLOWED_HOSTS: "56.124.103.127" # Seu IP público da EC2
+      GEMINI_API_KEY: "AIzaSyA0q1moqQ_6j6BPvEricBOX-9uaYRofUEo" # Sua chave Gemini API real
+    expose: # Expõe a porta 8000 internamente para o Nginx do frontend
+      - "8000"
+    depends_on:
+      db:
+        condition: service_healthy # Garante que o DB esteja pronto antes de iniciar o backend
+
+  # Serviço de Frontend React (Nginx)
+  frontend:
+    build:
+      context: ./ # Contexto da build para o Dockerfile do frontend na raiz do projeto
+      dockerfile: Dockerfile # Dockerfile do frontend na raiz do projeto
+    ports:
+      - "80:80" # Mapeia a porta 80 do contêiner para a porta 80 da instância EC2
+    depends_on:
+      - backend # Garante que o backend esteja rodando antes de iniciar o frontend
+
+# Volumes para persistência de dados
+volumes:
+  db_data: # Volume para os dados do PostgreSQL

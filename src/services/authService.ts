@@ -16,7 +16,8 @@ export interface UserRegistration {
 }
 
 export class AuthService {
-  private static readonly API_BASE_URL = 'http://127.0.0.1:8000/api';
+  // CORRIGIDO: Altere de 'http://127.0.0.1:8000/api' para apenas '/api'
+      private static readonly API_BASE_URL = '/api'; // Nginx fará o proxy para o backend
   private static readonly ACCESS_TOKEN_KEY = 'access_token';
   private static readonly REFRESH_TOKEN_KEY = 'refresh_token';
 
