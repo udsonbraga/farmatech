@@ -1,0 +1,7 @@
+node_modules
+dist
+.env
+.git
+.gitignore
+farmatech_backend/ # Ignore a pasta do backend ao construir a imagem do frontend
+# Adicione outros arquivos que você não quer que sejam copiados para a imagem do frontend
